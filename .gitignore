@@ -1,0 +1,4 @@
+# Personal backups — never commit financial data
+*-backup-*.json
+*.local.json
+.DS_Store
