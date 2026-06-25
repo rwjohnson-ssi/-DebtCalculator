@@ -19,6 +19,16 @@
       "function change(event) { if(event.target.id===\"debt-sort\"){ui.sort=event.target.value;render();} if(event.target.id===\"extra-amount\"){refreshExtraSheet(num(event.target.value));} }"
     );
 
+    source = source.replace(
+      "function trackPage() {",
+      "function trackPage() { if (window.debtWizardTrackPage) return window.debtWizardTrackPage({ state, ui, active, calculatePlan, dueDate, money, esc, dateLabel, keyMonth, parseMonth, mLabel, countdown, target, minimums });"
+    );
+
+    source = source.replace(
+      "if (act === \"nav\") {",
+      "if (window.debtWizardTrackAction && window.debtWizardTrackAction({ act, id, button, state, ui, render, paymentSheet, extraSheet, closeSheet, calculatePlan, active, dueDate, money, esc, dateLabel, keyMonth, parseMonth, mLabel, minimums, target })) return;\n    if (act === \"nav\") {"
+    );
+
     new Function(source)();
   } catch (error) {
     console.error(error);
