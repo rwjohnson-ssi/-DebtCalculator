@@ -1,0 +1,293 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="theme-color" content="#123c69" />
+  <title>Debt Calculator</title>
+  <style>
+    :root { --ink:#16283a; --muted:#687789; --bg:#f2f6f9; --card:#fff; --line:#d9e2e9; --brand:#123c69; --brand2:#25669f; --green:#14785f; --red:#b33d3d; --radius:15px; --shadow:0 10px 28px rgba(18,60,105,.08); }
+    * { box-sizing:border-box; }
+    body { margin:0; background:var(--bg); color:var(--ink); font:15px/1.45 system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif; }
+    button,input,select { font:inherit; }
+    button { cursor:pointer; }
+    header { color:#fff; background:linear-gradient(110deg,var(--brand),#1b527f); padding:22px max(18px,calc((100vw - 1360px)/2)); display:flex; justify-content:space-between; gap:18px; align-items:center; }
+    header h1 { margin:0; font-size:clamp(1.35rem,2.5vw,1.9rem); letter-spacing:-.035em; }
+    .eyebrow { margin:0 0 4px; color:var(--brand2); font-size:.72rem; letter-spacing:.12em; font-weight:800; }
+    header .eyebrow { color:#c9def1; }
+    .shell { width:min(1360px,100%); margin:0 auto; padding:22px clamp(16px,3vw,34px) 48px; }
+    .notice { margin-bottom:18px; padding:12px 15px; color:#284b67; background:#e9f4fb; border:1px solid #c1d8e9; border-radius:12px; }
+    .notice strong { margin-right:4px; }
+    .panel { background:var(--card); border:1px solid var(--line); border-radius:var(--radius); box-shadow:var(--shadow); padding:19px; margin-bottom:18px; }
+    .panel-head { display:flex; justify-content:space-between; align-items:start; gap:12px; margin-bottom:15px; }
+    h2 { margin:0; font-size:1.18rem; letter-spacing:-.02em; }
+    .muted { color:var(--muted); }
+    .small { font-size:.84rem; }
+    .grid { display:grid; grid-template-columns:repeat(6,minmax(0,1fr)); gap:12px; }
+    label { display:grid; gap:5px; color:#38536b; font-weight:700; font-size:.79rem; }
+    input,select { width:100%; border:1px solid #b9cbd8; border-radius:9px; padding:9px 10px; color:var(--ink); background:#fff; }
+    input:focus,select:focus { outline:3px solid rgba(37,102,159,.22); border-color:var(--brand2); }
+    .span2 { grid-column:span 2; }
+    .span3 { grid-column:span 3; }
+    .actions { display:flex; gap:8px; flex-wrap:wrap; align-items:end; }
+    .button { border:1px solid var(--brand); color:#fff; background:var(--brand); padding:9px 13px; border-radius:9px; font-weight:750; white-space:nowrap; }
+    .button:hover { filter:brightness(1.08); }
+    .secondary { background:#fff; color:var(--brand); }
+    .danger { color:var(--red); border-color:#d9a7a7; }
+    .link { border:0; background:transparent; color:var(--brand2); padding:5px; text-decoration:underline; font-size:.83rem; }
+    .summary { display:grid; grid-template-columns:repeat(5,minmax(0,1fr)); gap:13px; margin-bottom:18px; }
+    .metric { min-height:120px; background:#fff; border:1px solid var(--line); border-radius:var(--radius); padding:16px; box-shadow:var(--shadow); display:flex; flex-direction:column; justify-content:space-between; }
+    .metric.accent { background:linear-gradient(145deg,#fff,#e8f6f1); border-color:#a8d6c8; }
+    .metric .label { color:var(--muted); text-transform:uppercase; letter-spacing:.055em; font-size:.71rem; font-weight:800; }
+    .metric .value { font-size:clamp(1.25rem,2.3vw,1.75rem); line-height:1.05; font-weight:850; letter-spacing:-.045em; margin-top:4px; }
+    .metric .note { color:var(--muted); font-size:.78rem; margin-top:6px; }
+    .two-col { display:grid; grid-template-columns:minmax(0,1.7fr) minmax(285px,.8fr); gap:18px; }
+    .table-wrap { overflow:auto; border:1px solid var(--line); border-radius:11px; }
+    table { width:100%; border-collapse:collapse; min-width:720px; }
+    th { background:#f1f5f8; padding:10px; font-size:.71rem; letter-spacing:.06em; text-transform:uppercase; color:#567086; text-align:left; white-space:nowrap; }
+    td { padding:11px 10px; border-top:1px solid var(--line); vertical-align:middle; }
+    th.num,td.num { text-align:right; }
+    .name { font-weight:800; }
+    .sub { color:var(--muted); font-size:.78rem; margin-top:2px; }
+    .status { display:inline-flex; padding:3px 7px; border-radius:999px; color:#44647e; background:#eef3f7; font-size:.71rem; font-weight:800; }
+    .status.target { color:#12674f; background:#e6f6f0; }
+    .row-actions { display:flex; gap:5px; justify-content:flex-end; }
+    .row-actions button { border:1px solid #c8d5df; border-radius:7px; color:var(--brand); background:#fff; padding:5px 7px; font-size:.75rem; }
+    .empty { color:var(--muted); padding:28px 16px; text-align:center; }
+    .next { border-top:5px solid var(--green); }
+    .next h2 { margin-bottom:7px; }
+    .keyvals { display:grid; gap:9px; border-top:1px solid var(--line); margin-top:14px; padding-top:14px; }
+    .keyvals div { display:flex; justify-content:space-between; gap:12px; }
+    .keyvals span { color:var(--muted); }
+    .history { display:grid; gap:8px; margin-top:10px; }
+    .history-item { display:flex; justify-content:space-between; gap:10px; padding:9px 0; border-bottom:1px solid var(--line); font-size:.86rem; }
+    .history-item:last-child { border-bottom:0; }
+    .footer { display:flex; justify-content:space-between; gap:12px; color:var(--muted); font-size:.8rem; padding:8px 2px; }
+    #fileInput { display:none; }
+    @media (max-width:1000px) { .grid { grid-template-columns:repeat(3,minmax(0,1fr)); } .summary { grid-template-columns:repeat(3,minmax(0,1fr)); } .two-col { grid-template-columns:1fr; } }
+    @media (max-width:650px) { header { flex-direction:column; align-items:start; } .shell { padding-top:16px; } .grid,.summary { grid-template-columns:1fr; } .span2,.span3 { grid-column:auto; } .actions .button { flex:1; } .panel { padding:15px; } .footer { flex-direction:column; } }
+    @media print { @page { size:letter; margin:.45in; } body { background:#fff; } .no-print,.row-actions,.notice { display:none!important; } header { background:#fff; color:#000; padding:0 0 12px; border-bottom:2px solid #000; } header .eyebrow { color:#444; } .shell { padding:16px 0; } .summary { grid-template-columns:repeat(5,1fr); } .metric,.panel { box-shadow:none; border-radius:4px; break-inside:avoid; } .two-col { grid-template-columns:1fr; } .next { display:none; } }
+  </style>
+</head>
+<body>
+  <header>
+    <div><p class="eyebrow">PRIVATE PERSONAL FINANCE TOOL</p><h1>Debt Calculator</h1></div>
+    <div class="actions no-print"><button class="button secondary" id="printBtn">Print / Save PDF</button><button class="button" id="sampleBtn">Load sample</button></div>
+  </header>
+  <main class="shell">
+    <section class="notice no-print"><strong>Your data stays in this browser.</strong> Balances, payment plans, and backup files are not saved to GitHub or sent to a server.</section>
+
+    <section class="panel no-print">
+      <div class="panel-head"><div><p class="eyebrow">PLAN SETTINGS</p><h2>Payoff approach</h2><p class="muted small">Debt snowball targets the lowest balance first. Debt avalanche targets the highest APR first.</p></div></div>
+      <div class="grid">
+        <label class="span2">Payoff strategy<select id="strategy"><option value="snowball">Debt snowball — lowest balance first</option><option value="avalanche">Debt avalanche — highest APR first</option></select></label>
+        <label>Extra monthly payment<input id="extra" type="number" min="0" step="0.01" inputmode="decimal" placeholder="0.00" /></label>
+        <label>Plan begins<input id="planStart" type="month" /></label>
+        <div class="actions span2"><button class="button" id="saveSettings">Update payoff plan</button><button class="button secondary" id="exportBtn">Export backup</button><label class="button secondary" for="fileInput">Import backup</label><input id="fileInput" type="file" accept="application/json,.json" /></div>
+      </div>
+    </section>
+
+    <section id="summary" class="summary"></section>
+
+    <section class="two-col">
+      <section class="panel">
+        <div class="panel-head"><div><p class="eyebrow">ACCOUNTS</p><h2>Your debts</h2></div><button class="link no-print" id="clearAllBtn">Delete all local data</button></div>
+        <div id="debtTable" class="table-wrap"></div>
+      </section>
+      <aside class="panel next" id="nextPanel"></aside>
+    </section>
+
+    <section class="panel no-print">
+      <div class="panel-head"><div><p class="eyebrow" id="formEyebrow">NEW ACCOUNT</p><h2 id="formTitle">Add a debt</h2></div><button class="link" id="cancelEdit" hidden>Cancel edit</button></div>
+      <form id="debtForm" class="grid">
+        <label class="span2">Lender / account name<input name="name" required maxlength="80" placeholder="Example: Chase Freedom" /></label>
+        <label>Debt type<select name="type"><option>Credit Card</option><option>Auto Loan</option><option>Personal Loan</option><option>Student Loan</option><option>Medical</option><option>Mortgage</option><option>Other</option></select></label>
+        <label>Current balance<input name="balance" type="number" required min="0" step="0.01" inputmode="decimal" placeholder="0.00" /></label>
+        <label>APR (%)<input name="apr" type="number" required min="0" max="100" step="0.01" inputmode="decimal" placeholder="0.00" /></label>
+        <label>Full minimum payment<input name="minimum" type="number" required min="0" step="0.01" inputmode="decimal" placeholder="0.00" /></label>
+        <label>Due day<input name="dueDay" type="number" min="1" max="31" inputmode="numeric" placeholder="1–31" /></label>
+        <label>Credit limit <span class="muted">optional</span><input name="creditLimit" type="number" min="0" step="0.01" inputmode="decimal" placeholder="0.00" /></label>
+        <div class="actions span2"><button class="button" id="formSubmit" type="submit">Add debt</button></div>
+      </form>
+    </section>
+
+    <section class="panel">
+      <div class="panel-head"><div><p class="eyebrow">ROADMAP</p><h2>Monthly payoff plan</h2></div><p class="muted small">The next 24 months are shown below. Actual lender balances may differ because of statement timing, fees, and daily interest.</p></div>
+      <div id="schedule" class="table-wrap"></div>
+    </section>
+
+    <section class="panel no-print">
+      <div class="panel-head"><div><p class="eyebrow">PAYMENT HISTORY</p><h2>Recent payments</h2></div></div>
+      <div id="history" class="history"></div>
+    </section>
+    <div class="footer"><span>Planning estimates only. Check current statements for actual balances, APRs, and payment due dates.</span><span id="saveStatus"></span></div>
+  </main>
+
+  <script>
+  (() => {
+    'use strict';
+    const STORAGE_KEY = 'will-debt-calculator-v1';
+    const MAX_MONTHS = 720;
+    const $ = id => document.getElementById(id);
+    const fmt = new Intl.NumberFormat('en-US',{style:'currency',currency:'USD'});
+    const num = value => Number.isFinite(Number.parseFloat(value)) ? Number.parseFloat(value) : 0;
+    const cents = value => Math.round((value + Number.EPSILON) * 100) / 100;
+    const html = value => String(value ?? '').replace(/[&<>'"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[c]));
+    const currentMonth = () => { const d=new Date(); return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`; };
+    const readableMonth = d => d.toLocaleDateString('en-US',{month:'short',year:'numeric'});
+    const id = () => `${Date.now().toString(36)}-${Math.random().toString(36).slice(2,8)}`;
+    const defaultState = () => ({settings:{strategy:'snowball',extra:0,planStart:currentMonth()},debts:[],payments:[]});
+    let state = load();
+    let editingId = null;
+
+    function load(){
+      try { const raw=JSON.parse(localStorage.getItem(STORAGE_KEY)); return normalize(raw); }
+      catch { return defaultState(); }
+    }
+    function normalize(raw){
+      const base=defaultState();
+      if(!raw || typeof raw!=='object') return base;
+      return {
+        settings:{ strategy:raw.settings?.strategy==='avalanche'?'avalanche':'snowball', extra:Math.max(0,num(raw.settings?.extra)), planStart:/^\d{4}-(0[1-9]|1[0-2])$/.test(raw.settings?.planStart||'')?raw.settings.planStart:base.settings.planStart },
+        debts:Array.isArray(raw.debts)?raw.debts.map(d=>({id:String(d.id||id()),name:String(d.name||'').trim(),type:String(d.type||'Other'),balance:Math.max(0,num(d.balance)),apr:Math.max(0,Math.min(100,num(d.apr))),minimum:Math.max(0,num(d.minimum)),dueDay:Math.max(0,Math.min(31,Math.floor(num(d.dueDay)))),creditLimit:Math.max(0,num(d.creditLimit))})).filter(d=>d.name):[],
+        payments:Array.isArray(raw.payments)?raw.payments.slice(0,200):[]
+      };
+    }
+    function save(message='Saved locally'){
+      localStorage.setItem(STORAGE_KEY,JSON.stringify(state));
+      $('saveStatus').textContent = `${message} · ${new Date().toLocaleTimeString([],{hour:'numeric',minute:'2-digit'})}`;
+    }
+
+    function buildPlan(){
+      const debts=state.debts.filter(d=>d.balance>0.004).map(d=>({...d,balance:cents(d.balance),payoff:null}));
+      const originalMinimums=debts.reduce((s,d)=>s+d.minimum,0);
+      const budget=cents(originalMinimums+state.settings.extra);
+      const start = new Date(Number(state.settings.planStart.slice(0,4)),Number(state.settings.planStart.slice(5,7))-1,1);
+      const months=[]; let totalInterest=0; let noProgress=0;
+      const order = (a,b) => state.settings.strategy==='avalanche' ? (b.apr-a.apr || a.balance-b.balance) : (a.balance-b.balance || b.apr-a.apr);
+      for(let monthIndex=0; debts.length && monthIndex<MAX_MONTHS; monthIndex++){
+        const opening=cents(debts.reduce((s,d)=>s+d.balance,0));
+        let interest=0;
+        debts.forEach(d=>{ const i=cents(d.balance*d.apr/100/12); d.balance=cents(d.balance+i); interest=cents(interest+i); });
+        let available=budget;
+        const payments={};
+        for(const debt of debts){
+          const paid=Math.min(debt.minimum,debt.balance,available);
+          debt.balance=cents(debt.balance-paid); available=cents(available-paid); payments[debt.id]=cents((payments[debt.id]||0)+paid);
+        }
+        let targetName='—';
+        while(available>0.004 && debts.some(d=>d.balance>0.004)){
+          const target=debts.filter(d=>d.balance>0.004).sort(order)[0];
+          targetName=target.name;
+          const paid=Math.min(available,target.balance);
+          target.balance=cents(target.balance-paid); available=cents(available-paid); payments[target.id]=cents((payments[target.id]||0)+paid);
+        }
+        debts.forEach(d=>{ if(d.balance<=0.004 && !d.payoff) { d.balance=0; d.payoff=new Date(start.getFullYear(),start.getMonth()+monthIndex,1); } });
+        const closing=cents(debts.reduce((s,d)=>s+d.balance,0));
+        months.push({date:new Date(start.getFullYear(),start.getMonth()+monthIndex,1),opening,interest,payment:cents(budget-available),closing,target:targetName});
+        totalInterest=cents(totalInterest+interest);
+        if(closing>=opening-.004) noProgress++; else noProgress=0;
+        if(noProgress>=6 || budget<=0.004) return {months,totalInterest,budget,failed:true,payoffs:{}};
+      }
+      const payoffs={};
+      debts.forEach(d=>payoffs[d.id]=d.payoff);
+      return {months,totalInterest,budget,failed:debts.some(d=>d.balance>0.004),payoffs};
+    }
+
+    function render(){
+      $('strategy').value=state.settings.strategy;
+      $('extra').value=state.settings.extra||'';
+      $('planStart').value=state.settings.planStart;
+      const plan=buildPlan();
+      renderSummary(plan); renderDebts(plan); renderNext(plan); renderSchedule(plan); renderHistory();
+    }
+    function renderSummary(plan){
+      const active=state.debts.filter(d=>d.balance>0.004);
+      const total=active.reduce((s,d)=>s+d.balance,0);
+      const mins=active.reduce((s,d)=>s+d.minimum,0);
+      const date=!plan.failed && plan.months.length ? readableMonth(plan.months[plan.months.length-1].date) : active.length?'Review plan':'—';
+      const utilization=state.debts.filter(d=>d.creditLimit>0).reduce((a,d)=>({bal:a.bal+d.balance,limit:a.limit+d.creditLimit}),{bal:0,limit:0});
+      const util=utilization.limit?`${(utilization.bal/utilization.limit*100).toFixed(1)}% utilization`:'Add credit limits to calculate utilization';
+      $('summary').innerHTML=`
+        <div class="metric"><div class="label">Total debt</div><div class="value">${fmt.format(total)}</div><div class="note">${active.length} active account${active.length===1?'':'s'}</div></div>
+        <div class="metric"><div class="label">Minimum payments</div><div class="value">${fmt.format(mins)}</div><div class="note">Required each month</div></div>
+        <div class="metric accent"><div class="label">Planned monthly payment</div><div class="value">${fmt.format(plan.budget)}</div><div class="note">Includes ${fmt.format(state.settings.extra)} extra</div></div>
+        <div class="metric"><div class="label">Projected debt-free</div><div class="value">${date}</div><div class="note">${plan.failed?'Increase payment or check minimums':plan.months.length?`${plan.months.length} month${plan.months.length===1?'':'s'} projected`:'Add a debt to begin'}</div></div>
+        <div class="metric"><div class="label">Estimated future interest</div><div class="value">${fmt.format(plan.totalInterest||0)}</div><div class="note">${util}</div></div>`;
+    }
+    function renderDebts(plan){
+      const active=state.debts.filter(d=>d.balance>0.004).sort((a,b)=>a.balance-b.balance);
+      const target=active.sort((a,b)=>state.settings.strategy==='avalanche'?(b.apr-a.apr||a.balance-b.balance):(a.balance-b.balance||b.apr-a.apr))[0];
+      if(!state.debts.length){ $('debtTable').innerHTML='<div class="empty">Add your first debt below to see a payoff plan.</div>'; return; }
+      const rows=state.debts.map(d=>{
+        const status=d.balance<=0.004?'<span class="status">Paid off</span>':d.id===target?.id?'<span class="status target">Current target</span>':'<span class="status">Minimum payment</span>';
+        return `<tr><td><div class="name">${html(d.name)}</div><div class="sub">${html(d.type)}${d.dueDay?` · due ${d.dueDay}`:''}</div></td><td class="num">${fmt.format(d.balance)}</td><td class="num">${d.apr.toFixed(2)}%</td><td class="num">${fmt.format(d.minimum)}</td><td>${status}</td><td class="num"><div class="row-actions"><button data-action="pay" data-id="${d.id}">Pay</button><button data-action="edit" data-id="${d.id}">Edit</button><button data-action="delete" data-id="${d.id}">Delete</button></div></td></tr>`;
+      }).join('');
+      $('debtTable').innerHTML=`<table><thead><tr><th>Account</th><th class="num">Balance</th><th class="num">APR</th><th class="num">Minimum</th><th>Status</th><th class="num">Actions</th></tr></thead><tbody>${rows}</tbody></table>`;
+    }
+    function renderNext(plan){
+      const active=state.debts.filter(d=>d.balance>0.004);
+      if(!active.length){ $('nextPanel').innerHTML='<p class="eyebrow">NEXT STEP</p><h2>Add your first debt</h2><p class="muted">The calculator will identify the account to target after you enter balances and minimum payments.</p>'; return; }
+      const target=active.sort((a,b)=>state.settings.strategy==='avalanche'?(b.apr-a.apr||a.balance-b.balance):(a.balance-b.balance||b.apr-a.apr))[0];
+      const method=state.settings.strategy==='avalanche'?'highest APR':'lowest balance';
+      $('nextPanel').innerHTML=`<p class="eyebrow">NEXT STEP</p><h2>${html(target.name)}</h2><p class="muted">Keep paying the minimum on every account. Apply your extra payment to this ${method} target.</p><div class="keyvals"><div><span>Current balance</span><strong>${fmt.format(target.balance)}</strong></div><div><span>APR</span><strong>${target.apr.toFixed(2)}%</strong></div><div><span>Minimum payment</span><strong>${fmt.format(target.minimum)}</strong></div><div><span>Extra payment</span><strong>${fmt.format(state.settings.extra)}</strong></div></div>`;
+    }
+    function renderSchedule(plan){
+      if(!plan.months.length){ $('schedule').innerHTML='<div class="empty">Your monthly payoff schedule will appear here after you add debts.</div>'; return; }
+      const rows=plan.months.slice(0,24).map(m=>`<tr><td>${readableMonth(m.date)}</td><td class="num">${fmt.format(m.opening)}</td><td class="num">${fmt.format(m.interest)}</td><td>${html(m.target)}</td><td class="num">${fmt.format(m.payment)}</td><td class="num">${fmt.format(m.closing)}</td></tr>`).join('');
+      const note=plan.failed?'<div class="empty">This plan did not reach zero. Confirm the minimum payments and increase your extra payment.</div>':'';
+      $('schedule').innerHTML=`<table><thead><tr><th>Month</th><th class="num">Opening balance</th><th class="num">Interest</th><th>Extra-payment target</th><th class="num">Plan payment</th><th class="num">Closing balance</th></tr></thead><tbody>${rows}</tbody></table>${note}`;
+    }
+    function renderHistory(){
+      if(!state.payments.length){ $('history').innerHTML='<p class="muted small">Payments recorded with the “Pay” button will appear here. You can also update a balance directly by editing an account.</p>'; return; }
+      $('history').innerHTML=state.payments.slice(0,8).map(p=>`<div class="history-item"><span><strong>${html(p.name)}</strong><br><span class="muted">${html(p.date)}</span></span><strong>${fmt.format(p.amount)}</strong></div>`).join('');
+    }
+
+    function resetForm(){ editingId=null; $('debtForm').reset(); $('formEyebrow').textContent='NEW ACCOUNT'; $('formTitle').textContent='Add a debt'; $('formSubmit').textContent='Add debt'; $('cancelEdit').hidden=true; }
+    function editDebt(debtId){
+      const d=state.debts.find(x=>x.id===debtId); if(!d) return;
+      editingId=d.id; const f=$('debtForm');
+      ['name','type','balance','apr','minimum','dueDay','creditLimit'].forEach(k=>f.elements[k].value=d[k]||'');
+      $('formEyebrow').textContent='EDIT ACCOUNT'; $('formTitle').textContent=`Edit ${d.name}`; $('formSubmit').textContent='Save changes'; $('cancelEdit').hidden=false;
+      f.scrollIntoView({behavior:'smooth',block:'center'});
+    }
+    function recordPayment(debtId){
+      const d=state.debts.find(x=>x.id===debtId); if(!d || d.balance<=0) return;
+      const entry=prompt(`Payment amount for ${d.name}:`, d.minimum ? d.minimum.toFixed(2) : '');
+      if(entry===null) return;
+      const amount=num(entry); if(amount<=0) return alert('Enter a payment greater than zero.');
+      const applied=cents(Math.min(amount,d.balance)); d.balance=cents(d.balance-applied);
+      state.payments.unshift({id:id(),name:d.name,amount:applied,date:new Date().toLocaleDateString('en-US')});
+      save('Payment recorded'); render();
+    }
+    function downloadBackup(){
+      const blob=new Blob([JSON.stringify({...state,exportedAt:new Date().toISOString()},null,2)],{type:'application/json'});
+      const a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download=`debt-calculator-backup-${new Date().toISOString().slice(0,10)}.json`; a.click(); URL.revokeObjectURL(a.href); save('Backup exported');
+    }
+    function sample(){
+      if(state.debts.length && !confirm('Replace your current local data with fictional sample debts? Export a backup first if needed.')) return;
+      state={settings:{strategy:'snowball',extra:150,planStart:currentMonth()},debts:[
+        {id:id(),name:'Store Card',type:'Credit Card',balance:850,apr:29.99,minimum:45,dueDay:12,creditLimit:1200},
+        {id:id(),name:'Everyday Card',type:'Credit Card',balance:3200,apr:21.99,minimum:105,dueDay:24,creditLimit:4500},
+        {id:id(),name:'Auto Loan',type:'Auto Loan',balance:9600,apr:6.25,minimum:295,dueDay:5,creditLimit:0}
+      ],payments:[]}; save('Sample data loaded'); resetForm(); render();
+    }
+
+    $('saveSettings').addEventListener('click',()=>{ state.settings.strategy=$('strategy').value; state.settings.extra=Math.max(0,num($('extra').value)); state.settings.planStart=$('planStart').value||currentMonth(); save('Plan updated'); render(); });
+    $('debtForm').addEventListener('submit',event=>{
+      event.preventDefault(); const data=new FormData(event.currentTarget); const debt={id:editingId||id(),name:String(data.get('name')).trim(),type:String(data.get('type')),balance:Math.max(0,num(data.get('balance'))),apr:Math.max(0,Math.min(100,num(data.get('apr')))),minimum:Math.max(0,num(data.get('minimum'))),dueDay:Math.max(0,Math.min(31,Math.floor(num(data.get('dueDay'))))),creditLimit:Math.max(0,num(data.get('creditLimit')))};
+      if(!debt.name) return; if(editingId){ const i=state.debts.findIndex(d=>d.id===editingId); if(i>=0) state.debts[i]=debt; } else state.debts.push(debt);
+      save(editingId?'Debt updated':'Debt added'); resetForm(); render();
+    });
+    $('cancelEdit').addEventListener('click',resetForm);
+    $('debtTable').addEventListener('click',event=>{ const b=event.target.closest('button[data-action]'); if(!b) return; const debtId=b.dataset.id; if(b.dataset.action==='edit') editDebt(debtId); if(b.dataset.action==='pay') recordPayment(debtId); if(b.dataset.action==='delete'){ const d=state.debts.find(x=>x.id===debtId); if(d && confirm(`Delete “${d.name}”?`)){ state.debts=state.debts.filter(x=>x.id!==debtId); save('Debt deleted'); render(); } } });
+    $('exportBtn').addEventListener('click',downloadBackup);
+    $('fileInput').addEventListener('change',event=>{ const file=event.target.files?.[0]; if(!file) return; const reader=new FileReader(); reader.onload=()=>{ try { const incoming=normalize(JSON.parse(reader.result)); if(confirm(`Replace local data with backup containing ${incoming.debts.length} debt account(s)?`)){ state=incoming; save('Backup imported'); resetForm(); render(); } } catch { alert('That file is not a valid Debt Calculator backup.'); } event.target.value=''; }; reader.readAsText(file); });
+    $('clearAllBtn').addEventListener('click',()=>{ if(confirm('Delete every debt, setting, and payment history saved in this browser? This cannot be undone without a backup.')){ state=defaultState(); save('All local data deleted'); resetForm(); render(); } });
+    $('sampleBtn').addEventListener('click',sample);
+    $('printBtn').addEventListener('click',()=>window.print());
+    render();
+  })();
+  </script>
+</body>
+</html>
