@@ -1,0 +1,122 @@
+/* Compact Add/Edit Debt sheet: keeps the full due-date calendar visible on common iPhone viewports. */
+
+@media (max-width: 600px) {
+  .modal-backdrop.debt-entry-modal {
+    align-items: flex-end;
+    padding-top: 50px !important;
+  }
+
+  .modal-backdrop.debt-entry-modal .sheet {
+    max-height: calc(100dvh - 50px) !important;
+    padding: 10px 24px calc(14px + env(safe-area-inset-bottom, 0px)) !important;
+  }
+
+  .modal-backdrop.debt-entry-modal .sheet-head {
+    min-height: 36px !important;
+    margin: 0 0 10px !important;
+    padding: 0 0 8px !important;
+    border-bottom-width: 4px !important;
+  }
+
+  .modal-backdrop.debt-entry-modal .sheet-head h2 {
+    font-size: 1.16rem !important;
+  }
+
+  .modal-backdrop.debt-entry-modal .sheet-close {
+    width: 28px !important;
+    height: 28px !important;
+    font-size: 1.85rem !important;
+  }
+
+  .modal-backdrop.debt-entry-modal #debt-form,
+  .modal-backdrop.debt-entry-modal #debt-form > .form-grid {
+    gap: 9px !important;
+  }
+
+  .modal-backdrop.debt-entry-modal #debt-form .form-grid.two {
+    gap: 14px !important;
+  }
+
+  .modal-backdrop.debt-entry-modal #debt-form .field {
+    gap: 1px !important;
+    font-size: .78rem !important;
+    line-height: 1.1 !important;
+  }
+
+  .modal-backdrop.debt-entry-modal #debt-form .field input,
+  .modal-backdrop.debt-entry-modal #debt-form .field select,
+  .modal-backdrop.debt-entry-modal #debt-form .field textarea {
+    min-height: 34px !important;
+    padding: 2px 0 5px !important;
+    line-height: 1.1 !important;
+  }
+
+  /* Credit Limit is optional, but the secondary helper line uses valuable vertical space. */
+  .modal-backdrop.debt-entry-modal #debt-form .field:has(input[name="limit"]) > span {
+    display: none !important;
+  }
+
+  .modal-backdrop.debt-entry-modal .due-day-picker {
+    margin-top: 0 !important;
+    padding: 9px 0 1px !important;
+  }
+
+  .modal-backdrop.debt-entry-modal .due-day-picker-title {
+    font-size: .8rem !important;
+  }
+
+  .modal-backdrop.debt-entry-modal .due-day-picker-title span:last-child {
+    font-size: .71rem !important;
+  }
+
+  .modal-backdrop.debt-entry-modal .due-day-picker-status {
+    min-height: 15px !important;
+    margin: 3px 0 6px !important;
+    font-size: .73rem !important;
+  }
+
+  .modal-backdrop.debt-entry-modal .due-day-grid {
+    gap: 6px !important;
+  }
+
+  .modal-backdrop.debt-entry-modal .due-day-button {
+    height: 33px !important;
+    font-size: .81rem !important;
+  }
+
+  .modal-backdrop.debt-entry-modal .due-day-button.last-day {
+    min-width: 64px !important;
+  }
+
+  /* Let the calendar use the viewport instead of being hidden behind a sticky button. */
+  .modal-backdrop.debt-entry-modal .sheet-actions {
+    position: static !important;
+    bottom: auto !important;
+    margin: 11px 0 0 !important;
+    padding: 0 !important;
+    background: transparent !important;
+  }
+
+  .modal-backdrop.debt-entry-modal .sheet-actions .btn {
+    min-height: 44px !important;
+  }
+}
+
+@media (max-width: 390px) {
+  .modal-backdrop.debt-entry-modal .sheet {
+    padding-left: 20px !important;
+    padding-right: 20px !important;
+  }
+
+  .modal-backdrop.debt-entry-modal #debt-form .form-grid.two {
+    gap: 12px !important;
+  }
+
+  .modal-backdrop.debt-entry-modal .due-day-grid {
+    gap: 5px !important;
+  }
+
+  .modal-backdrop.debt-entry-modal .due-day-button {
+    height: 32px !important;
+  }
+}
