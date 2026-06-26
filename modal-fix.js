@@ -14,17 +14,32 @@
         .sheet .field input, .sheet .field select, .sheet .field textarea { min-height: 48px; line-height: 1.25; }
         .sheet .field textarea { min-height: 88px; }
       }
-      .due-day-picker { grid-column: 1 / -1; margin-top: 2px; padding: 14px 0 2px; border-top: 1px solid #e7ecee; }
-      .due-day-picker-title { display:flex; align-items:baseline; justify-content:space-between; gap:10px; color:#5e6b70; font-size:.86rem; font-weight:850; }
-      .due-day-picker-title span:last-child { color:#8e999d; font-size:.75rem; font-weight:650; }
-      .due-day-picker-status { min-height:20px; margin:5px 0 10px; color:#1786a4; font-size:.84rem; font-weight:800; }
-      .due-day-picker-status.empty { color:#929da1; font-weight:650; }
+      .due-day-picker { grid-column: 1 / -1; margin-top: 2px; padding: 16px 0 4px; border-top: 1px solid #e1eaec; }
+      .due-day-picker-title { display:flex; align-items:baseline; justify-content:space-between; gap:10px; color:#455a61; font-size:.86rem; font-weight:850; }
+      .due-day-picker-title span:last-child { color:#819096; font-size:.75rem; font-weight:700; }
+      .due-day-picker-status { min-height:22px; margin:7px 0 11px; color:#08758e; font-size:.84rem; font-weight:850; text-align:center; }
+      .due-day-picker-status.empty { color:#879398; font-weight:650; }
       .due-day-grid { display:grid; grid-template-columns:repeat(8,minmax(0,1fr)); gap:8px; }
-      .due-day-button { min-width:0; height:38px; padding:0; border:1px solid #edf0f1; border-radius:50%; color:#3f4c51; background:#f5f6f6; font-size:.91rem !important; font-weight:800; box-shadow:none; }
+      .due-day-button { min-width:0; height:40px; padding:0; border:1px solid #e5ebed; border-radius:50%; color:#39474d; background:#f5f7f7; font-size:.91rem !important; font-weight:850; box-shadow:none; }
       .due-day-button.last-day { grid-column:span 2; border-radius:999px; color:#40525a; }
-      .due-day-button.selected { color:#fff; border-color:#37bdd7; background:linear-gradient(135deg,#24b6d1,#57cfe1); box-shadow:0 5px 11px rgba(44,184,210,.24); }
-      .due-day-button:active { transform:scale(.96); }
-      @media (max-width: 390px) { .due-day-grid { grid-template-columns:repeat(7,minmax(0,1fr)); gap:7px; } .due-day-button { height:36px; font-size:.85rem !important; } }
+      /* High contrast so the selected payment date is obvious at a glance. */
+      .modal-backdrop.debt-entry-modal .due-day-button.selected,
+      .due-day-picker .due-day-button.selected {
+        color:#ffffff !important;
+        border:3px solid #034d63 !important;
+        background:linear-gradient(135deg,#007b99 0%,#1dc1dc 100%) !important;
+        font-weight:950 !important;
+        box-shadow:0 0 0 3px #d9f7fb, 0 7px 14px rgba(0,118,148,.34) !important;
+        transform:scale(1.08);
+      }
+      .due-day-button.selected.last-day { padding:0 13px; }
+      .due-day-button:focus-visible { outline:3px solid #ffc846; outline-offset:2px; }
+      .due-day-button:active { transform:scale(.95); }
+      .due-day-button.selected:active { transform:scale(1.02); }
+      @media (max-width: 390px) {
+        .due-day-grid { grid-template-columns:repeat(7,minmax(0,1fr)); gap:7px; }
+        .due-day-button { height:38px; font-size:.85rem !important; }
+      }
     `;
     document.head.appendChild(style);
   }
@@ -36,6 +51,8 @@
     const input = form.querySelector('input[name="dueDay"]');
     const oldField = input?.closest("label.field");
     const twoColumnRow = oldField?.parentElement;
+    const limitInput = form.querySelector('input[name="limit"]');
+    const limitField = limitInput?.closest("label.field");
     if (!input || !oldField || !twoColumnRow) return;
 
     form.dataset.dueDayEnhanced = "true";
@@ -56,6 +73,9 @@
 
     picker.appendChild(input);
     oldField.remove();
+
+    /* Keep the primary terms together: Minimum Payment on the left, Credit Limit on the right. */
+    if (limitField) twoColumnRow.appendChild(limitField);
     twoColumnRow.insertAdjacentElement("afterend", picker);
 
     const status = picker.querySelector(".due-day-picker-status");
