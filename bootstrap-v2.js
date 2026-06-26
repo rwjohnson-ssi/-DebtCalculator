@@ -10,7 +10,6 @@
       "const trails = Object.fromEntries(state.debts.map(item => [item.id, [{ date: start, balance: item.balance }]]));"
     );
 
-    // Preserve payroll schedule fields in browser storage along with debt data.
     source = source.replace(
       'settings: { strategy: "snowball", extra: 0, start: nowMonth(), cycleDay: 1, customOrder: [], oneTime: [] },',
       'settings: { strategy: "snowball", extra: 0, start: nowMonth(), cycleDay: 1, fundingFrequency: "monthly", paycheckAmount: 0, nextPayDate: "", semiMonthlyFirstDay: 1, semiMonthlySecondDay: 15, customOrder: [], oneTime: [] },'
@@ -20,9 +19,6 @@
       'cycleDay: Math.max(1, Math.min(28, Math.floor(num(settings.cycleDay)) || 1)),\n        fundingFrequency: ["monthly", "semimonthly", "biweekly"].includes(settings.fundingFrequency) ? settings.fundingFrequency : "monthly",\n        paycheckAmount: Math.max(0, num(settings.paycheckAmount)),\n        nextPayDate: /^\\d{4}-\\d{2}-\\d{2}$/.test(settings.nextPayDate || "") ? settings.nextPayDate : "",\n        semiMonthlyFirstDay: Math.max(1, Math.min(28, Math.floor(num(settings.semiMonthlyFirstDay)) || 1)),\n        semiMonthlySecondDay: Math.max(1, Math.min(28, Math.floor(num(settings.semiMonthlySecondDay)) || 15)),\n        customOrder:'
     );
 
-    // For bi-weekly/twice-monthly funding, payoff projections use the true
-    // annual contribution averaged across 12 months. Track still shows the
-    // actual paycheck dates separately.
     source = source.replace(
       'const budget = cents(minimums() + extra);',
       'const payrollFrequency = state.settings.fundingFrequency;\n    const payrollAmount = Math.max(0, num(state.settings.paycheckAmount));\n    const payrollAverage = payrollFrequency === "biweekly" && payrollAmount > 0 ? payrollAmount * 26 / 12 : payrollFrequency === "semimonthly" && payrollAmount > 0 ? payrollAmount * 2 : 0;\n    const budget = cents(payrollAverage || minimums() + extra);'
@@ -49,13 +45,10 @@
 
     new Function(source)();
 
-    // Load Budget only after the original application has fully created its
-    // screen and bottom navigation. This prevents the original render cycle
-    // from replacing the added Budget tab.
-    if (!document.querySelector('script[data-budget-safe-runtime="true"]')) {
+    if (!document.querySelector('script[data-budget-workspace-runtime="true"]')) {
       const budgetScript = document.createElement("script");
-      budgetScript.src = "budget-safe-v2.js?v=26";
-      budgetScript.dataset.budgetSafeRuntime = "true";
+      budgetScript.src = "budget-workspace-v3.js?v=27";
+      budgetScript.dataset.budgetWorkspaceRuntime = "true";
       document.body.appendChild(budgetScript);
     }
   } catch (error) {
