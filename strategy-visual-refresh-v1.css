@@ -1,0 +1,196 @@
+/* Strategy page visual refresh — presentation only; no navigation or calculation changes. */
+
+/* Treat each Strategy section as a clearly separated card instead of one long continuous panel. */
+.page-wrap .section:has(.strategy-panel) {
+  padding: 10px 0;
+  border-bottom: 0;
+}
+.page-wrap .section:has(.strategy-panel):first-child {
+  padding-top: 16px;
+}
+
+.strategy-panel {
+  padding: 18px !important;
+  border: 1px solid #dcebed;
+  border-radius: 20px;
+  background: linear-gradient(180deg, #ffffff 0%, #fbfeff 100%);
+  box-shadow: 0 9px 22px rgba(23, 71, 87, .055);
+}
+
+.strategy-title {
+  gap: 11px !important;
+  color: #0e526b !important;
+  font-size: 1.32rem !important;
+  line-height: 1.08;
+}
+.strategy-title .ico {
+  width: 34px;
+  height: 34px;
+  display: grid;
+  place-items: center;
+  flex: 0 0 auto;
+  border-radius: 11px;
+  color: #13748d !important;
+  background: #e9f9fc;
+  font-size: 1.04rem !important;
+}
+.strategy-copy {
+  margin: 8px 0 16px !important;
+  color: #77868c !important;
+  font-size: .88rem !important;
+  line-height: 1.42;
+}
+
+.form-caption {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  margin: 17px 0 9px !important;
+  color: #1c637b !important;
+  font-size: .69rem !important;
+  letter-spacing: .14em !important;
+}
+.form-caption::after {
+  content: "";
+  height: 1px;
+  flex: 1;
+  background: #e1edef;
+}
+.strategy-title + .strategy-copy + .form-caption {
+  margin-top: 0 !important;
+}
+
+/* The funding date is a distinct, high-visibility control. */
+.strategy-panel > .funding-row {
+  min-height: 62px;
+  padding: 12px 13px !important;
+  border: 1px solid #cdebf0 !important;
+  border-radius: 13px;
+  background: #f3fcfe;
+}
+.strategy-panel > .funding-row .left,
+.strategy-panel > .funding-row .right {
+  color: #244e5c !important;
+}
+.strategy-panel > .funding-row .right {
+  font-size: 1rem !important;
+}
+
+.funding-rows {
+  gap: 8px;
+}
+.funding-row {
+  min-height: 57px;
+  padding: 12px 13px !important;
+  border: 1px solid #e3ecee !important;
+  border-radius: 13px;
+  background: #fff !important;
+  transition: border-color .16s ease, background .16s ease, transform .16s ease;
+}
+.funding-row:first-child {
+  padding-top: 12px !important;
+}
+.funding-row:last-child {
+  border-bottom: 1px solid #e3ecee !important;
+}
+.funding-row .left {
+  color: #657379 !important;
+  font-size: .95rem !important;
+}
+.funding-row .right {
+  color: #31474f !important;
+  font-size: 1rem !important;
+}
+.funding-row.actionable {
+  background: #fbfeff !important;
+}
+.funding-row.actionable:active {
+  transform: scale(.992);
+  border-color: #8ed9e7 !important;
+  background: #eefbfe !important;
+}
+.funding-total {
+  margin-top: 2px !important;
+  border-color: #bfe8ef !important;
+  background: #edfafd !important;
+}
+.funding-total .left,
+.funding-total .right {
+  color: #0d6077 !important;
+  font-weight: 850 !important;
+}
+.row-chev {
+  color: #6d858d !important;
+}
+
+.impact-strip {
+  min-height: 48px;
+  margin-top: 13px !important;
+  padding: 11px 13px !important;
+  border-color: #bfe8ef !important;
+  border-radius: 13px !important;
+  background: linear-gradient(135deg, #ecfbfe, #f8feff) !important;
+}
+.impact-strip span {
+  color: #2c7890 !important;
+}
+.impact-strip strong {
+  color: #0c6983 !important;
+}
+
+/* Make the upcoming-paycheck portion read as a separate planning card. */
+.paycheck-preview {
+  margin-top: 16px !important;
+  padding: 14px !important;
+  border: 1px solid #cbe9ee !important;
+  border-radius: 15px !important;
+  background: linear-gradient(180deg, #f0fbfd, #f9feff) !important;
+}
+.paycheck-preview-head {
+  margin-bottom: 6px !important;
+}
+.paycheck-preview-head strong {
+  color: #12536b !important;
+  font-size: .98rem !important;
+}
+.paycheck-preview-edit {
+  color: #1189a5 !important;
+  font-weight: 900 !important;
+}
+.paycheck-preview-row {
+  padding: 10px 0 !important;
+  border-top-color: #d9eef1 !important;
+}
+.paycheck-preview-icon {
+  color: #147d97 !important;
+  background: #d6f3f7 !important;
+}
+.paycheck-preview-date {
+  color: #40545b !important;
+}
+.paycheck-preview-amount {
+  color: #144f62 !important;
+}
+.paycheck-average-note {
+  margin-top: 10px !important;
+  color: #708087 !important;
+}
+
+@media (max-width: 559px) {
+  .page-wrap .section:has(.strategy-panel) {
+    padding: 8px 0;
+  }
+  .strategy-panel {
+    padding: 16px !important;
+    border-radius: 18px;
+  }
+  .strategy-title {
+    font-size: 1.25rem !important;
+  }
+  .strategy-copy {
+    margin-bottom: 14px !important;
+  }
+  .funding-row {
+    min-height: 55px;
+  }
+}
