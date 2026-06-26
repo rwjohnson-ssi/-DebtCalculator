@@ -3,11 +3,13 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <meta http-equiv="refresh" content="0; url=mobile.html">
   <title>DebtWizard</title>
-  <script>location.replace('mobile.html');</script>
+  <script>
+    location.replace(`mobile.html${location.search || ""}`);
+  </script>
 </head>
 <body>
-  <p>Opening <a href="mobile.html">DebtWizard</a>…</p>
+  <p>Opening <a id="app-link" href="mobile.html">DebtWizard</a>…</p>
+  <script>document.getElementById("app-link").href = `mobile.html${location.search || ""}`;</script>
 </body>
 </html>
