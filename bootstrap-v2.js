@@ -9,25 +9,50 @@
       "const trails = Object.fromEntries(state.debts.map(item => [item.id, [{ date: start, balance: item.balance }]));",
       "const trails = Object.fromEntries(state.debts.map(item => [item.id, [{ date: start, balance: item.balance }]]));"
     );
+
     source = source.replace(
-      'if (ui.page === "debts") screen.innerHTML = debtsPage();',
-      'if (ui.page === "debts") screen.innerHTML = debtsPage();\n    if (ui.page === "budget") screen.innerHTML = budgetPage();'
+      'settings: { strategy: "snowball", extra: 0, start: nowMonth(), cycleDay: 1, customOrder: [], oneTime: [] },',
+      'settings: { strategy: "snowball", extra: 0, start: nowMonth(), cycleDay: 1, fundingFrequency: "monthly", paycheckAmount: 0, nextPayDate: "", semiMonthlyFirstDay: 1, semiMonthlySecondDay: 15, customOrder: [], oneTime: [] },'
     );
     source = source.replace(
-      '["debts", "Debts", "◔"],',
-      '["debts", "Debts", "◔"],\n    ["budget", "Budget", "▦"],'
-    );
-    source = source.replace(
-      '    if (act === "nav") {',
-      '    if (bAction(act, id, button)) return;\n    if (act === "nav") {'
-    );
-    source = source.replace(
-      '  function submit(event) {',
-      '  function submit(event) { if (bSubmit(event)) return;'
-    );
-    source = source.replace(
-      '  function input(event) {',
-      '  function input(event) { if (bInput(event)) return;'
+      'cycleDay: Math.max(1, Math.min(28, Math.floor(num(settings.cycleDay)) || 1)),\n        customOrder:',
+      'cycleDay: Math.max(1, Math.min(28, Math.floor(num(settings.cycleDay)) || 1)),\n        fundingFrequency: ["monthly", "semimonthly", "biweekly"].includes(settings.fundingFrequency) ? settings.fundingFrequency : "monthly",\n        paycheckAmount: Math.max(0, num(settings.paycheckAmount)),\n        nextPayDate: /^\\d{4}-\\d{2}-\\d{2}$/.test(settings.nextPayDate || "") ? settings.nextPayDate : "",\n        semiMonthlyFirstDay: Math.max(1, Math.min(28, Math.floor(num(settings.semiMonthlyFirstDay)) || 1)),\n        semiMonthlySecondDay: Math.max(1, Math.min(28, Math.floor(num(settings.semiMonthlySecondDay)) || 15)),\n        customOrder:'
     );
 
-    const budgetCode = atob("ICBmdW5jdGlvbiBiTG9hZCgpe3RyeXtyZXR1cm4gSlNPTi5wYXJzZShsb2NhbFN0b3JhZ2UuZ2V0SXRlbSgiZHctYnVkZ2V0IikpfHx7bTp7fX19Y2F0Y2h7cmV0dXJue206e319fX0KICBmdW5jdGlvbiBiU2F2ZShkKXtsb2NhbFN0b3JhZ2Uuc2V0SXRlbSgiZHctYnVkZ2V0IixKU09OLnN0cmluZ2lmeShkKSl9CiAgZnVuY3Rpb24gYklkKCl7cmV0dXJuIE1hdGgucmFuZG9tKCkudG9TdHJpbmcoMzYpLnNsaWNlKDIpK0RhdGUubm93KCkudG9TdHJpbmcoMzYpfQogIGZ1bmN0aW9uIGJDYXRzKCl7cmV0dXJuWyJHaXZpbmciLCJFbWVyZ2VuY3kgRnVuZCIsIlJlbnQgLyBNb3J0Z2FnZSIsIlV0aWxpdGllcyIsIkdyb2NlcmllcyIsIkRpbmluZyBPdXQiLCJGdWVsIiwiSW5zdXJhbmNlIiwiUGVyc29uYWwiLCJTdWJzY3JpcHRpb25zIiwiTWlzY2VsbGFuZW91cyJdLm1hcChuPT4oe2lkOmJJZCgpLG4scDowfSkpfQogIGZ1bmN0aW9uIGJNb250aChrKXtsZXQgZD1iTG9hZCgpO2lmKCFkLm1ba10pe2xldCBwPU9iamVjdC5rZXlzKGQubSkuZmlsdGVyKHg9Png8aykuc29ydCgpLmF0KC0xKSxvPXAmJmQubVtwXTtkLm1ba109bz97aTpKU09OLnBhcnNlKEpTT04uc3RyaW5naWZ5KG8uaSkpLGM6SlNPTi5wYXJzZShKU09OLnN0cmluZ2lmeShvLmMpKSx0OltdfTp7aTpbXSxjOmJDYXRzKCksdDpbXX07YlNhdmUoZCl9cmV0dXJuIGQubVtrXX0KICBmdW5jdGlvbiBiRGVidCgpe3JldHVybiBjZW50cyhhY3RpdmUoKS5yZWR1Y2UoKHMseCk9PnMreC5taW5pbXVtLDApK01hdGgubWF4KDAsbnVtKHN0YXRlLnNldHRpbmdzLmV4dHJhKSkpfQogIGZ1bmN0aW9uIGJDU1MoKXtpZigkKCJiLWNzcyIpKXJldHVybjtsZXQgcz1kb2N1bWVudC5jcmVhdGVFbGVtZW50KCJzdHlsZSIpO3MuaWQ9ImItY3NzIjtzLnRleHRDb250ZW50PWAjYXBwLXNoZWxse3BhZGRpbmctYm90dG9tOjkwcHghaW1wb3J0YW50fS50YWJiYXJ7cG9zaXRpb246Zml4ZWQhaW1wb3J0YW50O2luc2V0OmF1dG8gMCAwIWltcG9ydGFudDt6LWluZGV4Ojk5OSFpbXBvcnRhbnQ7Z3JpZC10ZW1wbGF0ZS1jb2x1bW5zOnJlcGVhdCg2LDFmcikhaW1wb3J0YW50fS50YWJiYXIgLnRhYi1idG57bWluLXdpZHRoOjAhaW1wb3J0YW50O2ZvbnQtc2l6ZTouNnJlbSFpbXBvcnRhbnQ7cGFkZGluZzozcHggMCFpbXBvcnRhbnR9LmJ1ZGdldC1ib3h7cGFkZGluZzoxNXB4O2JvcmRlci:TRUNCATED
+    source = source.replace(
+      'const budget = cents(minimums() + extra);',
+      'const payrollFrequency = state.settings.fundingFrequency;\n    const payrollAmount = Math.max(0, num(state.settings.paycheckAmount));\n    const payrollAverage = payrollFrequency === "biweekly" && payrollAmount > 0 ? payrollAmount * 26 / 12 : payrollFrequency === "semimonthly" && payrollAmount > 0 ? payrollAmount * 2 : 0;\n    const budget = cents(payrollAverage || minimums() + extra);'
+    );
+
+    source = source.replace(
+      'if(event.target.id==="extra-amount") { refreshExtraSheet(num(event.target.value)); }',
+      ''
+    );
+    source = source.replace(
+      'function change(event) { if(event.target.id==="debt-sort"){ui.sort=event.target.value;render();} }',
+      'function change(event) { if(event.target.id==="debt-sort"){ui.sort=event.target.value;render();} if(event.target.id==="extra-amount"){refreshExtraSheet(num(event.target.value));} }'
+    );
+
+    source = source.replace(
+      'function trackPage() {',
+      'function trackPage() { if (window.debtWizardTrackPage) return window.debtWizardTrackPage({ state, ui, active, calculatePlan, dueDate, money, esc, dateLabel, keyMonth, parseMonth, mLabel, countdown, target, minimums });'
+    );
+
+    source = source.replace(
+      'if (act === "nav") {',
+      'if (window.debtWizardTrackAction && window.debtWizardTrackAction({ act, id, button, state, ui, render, paymentSheet, extraSheet, closeSheet, calculatePlan, active, dueDate, money, esc, dateLabel, keyMonth, parseMonth, mLabel, minimums, target })) return;\n    if (act === "nav") {'
+    );
+
+    new Function(source)();
+
+    if (!document.querySelector('script[data-budget-workspace-runtime="true"]')) {
+      const budgetScript = document.createElement("script");
+      budgetScript.src = "budget-workspace-v3.js?v=28";
+      budgetScript.dataset.budgetWorkspaceRuntime = "true";
+      document.body.appendChild(budgetScript);
+    }
+  } catch (error) {
+    console.error(error);
+    target.innerHTML = `<section style="font-family:-apple-system,BlinkMacSystemFont,Segoe UI,sans-serif;padding:40px 22px;color:#174a61"><h1 style="margin:0 0 8px">DebtWizard needs a refresh</h1><p style="line-height:1.5">The newest version did not finish loading. Refresh this page once and try again.</p></section>`;
+  }
+})();
