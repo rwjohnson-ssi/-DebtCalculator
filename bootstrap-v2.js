@@ -48,6 +48,16 @@
     );
 
     new Function(source)();
+
+    // Load Budget only after the original application has fully created its
+    // screen and bottom navigation. This prevents the original render cycle
+    // from replacing the added Budget tab.
+    if (!document.querySelector('script[data-budget-safe-runtime="true"]')) {
+      const budgetScript = document.createElement("script");
+      budgetScript.src = "budget-safe-v2.js?v=26";
+      budgetScript.dataset.budgetSafeRuntime = "true";
+      document.body.appendChild(budgetScript);
+    }
   } catch (error) {
     console.error(error);
     target.innerHTML = `<section style="font-family:-apple-system,BlinkMacSystemFont,Segoe UI,sans-serif;padding:40px 22px;color:#174a61"><h1 style="margin:0 0 8px">DebtWizard needs a refresh</h1><p style="line-height:1.5">The newest version did not finish loading. Refresh this page once and try again.</p></section>`;
