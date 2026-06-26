@@ -1,0 +1,208 @@
+/* DebtWizard Strategy FAQ — mobile-first accordion styling. */
+
+.strategy-faq-section {
+  padding-top: 6px;
+  padding-bottom: 10px;
+}
+
+.strategy-faq-card {
+  overflow: hidden;
+  border: 1px solid #d9e9ec;
+  border-radius: 19px;
+  background: linear-gradient(180deg, #ffffff 0%, #fcfeff 100%);
+  box-shadow: 0 9px 22px rgba(22, 72, 89, .055);
+}
+
+.strategy-faq-intro {
+  padding: 18px 17px 15px;
+  border-bottom: 1px solid #e6eff1;
+  background: linear-gradient(135deg, #f2fcfe 0%, #ffffff 82%);
+}
+
+.strategy-faq-eyebrow {
+  display: block;
+  margin-bottom: 6px;
+  color: #14809b;
+  font-size: .67rem;
+  font-weight: 900;
+  letter-spacing: .15em;
+}
+
+.strategy-faq-intro h2 {
+  margin: 0;
+  color: #0d5169;
+  font-size: 1.34rem;
+  line-height: 1.08;
+  letter-spacing: -.035em;
+}
+
+.strategy-faq-intro p {
+  margin: 7px 0 0;
+  color: #718087;
+  font-size: .85rem;
+  line-height: 1.42;
+}
+
+.strategy-faq-list {
+  background: #fff;
+}
+
+.strategy-faq-item {
+  border-bottom: 1px solid #e8eff1;
+}
+
+.strategy-faq-item:last-child {
+  border-bottom: 0;
+}
+
+.strategy-faq-question {
+  display: flex;
+  width: 100%;
+  min-height: 61px;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 13px 15px 13px 17px;
+  border: 0;
+  color: #314b54;
+  background: #fff;
+  font-size: .91rem;
+  font-weight: 850;
+  line-height: 1.27;
+  text-align: left;
+}
+
+.strategy-faq-question:active {
+  background: #f4fcfd;
+}
+
+.strategy-faq-question:focus-visible {
+  outline: 3px solid #ffc846;
+  outline-offset: -3px;
+}
+
+.strategy-faq-plus {
+  display: grid;
+  width: 25px;
+  height: 25px;
+  flex: 0 0 auto;
+  place-items: center;
+  border-radius: 50%;
+  color: #ffffff;
+  background: #0d5d74;
+  font-size: 1.15rem;
+  font-weight: 500;
+  line-height: 1;
+  transition: transform .18s ease, background .18s ease;
+}
+
+.strategy-faq-item.open .strategy-faq-question {
+  color: #0b6179;
+  background: #f4fcfd;
+}
+
+.strategy-faq-item.open .strategy-faq-plus {
+  background: #1bb8d1;
+  transform: rotate(45deg);
+}
+
+.strategy-faq-answer {
+  padding: 0 17px 17px;
+  color: #596b72;
+  background: #f4fcfd;
+  font-size: .86rem;
+  line-height: 1.48;
+}
+
+.strategy-faq-answer[hidden] {
+  display: none !important;
+}
+
+.strategy-faq-answer p {
+  margin: 0 0 11px;
+}
+
+.strategy-faq-answer p:last-child {
+  margin-bottom: 0;
+}
+
+.strategy-faq-answer strong {
+  color: #155a70;
+}
+
+.strategy-faq-example {
+  margin: 12px 0;
+  padding: 13px;
+  border: 1px solid #cdebf0;
+  border-radius: 13px;
+  background: #ffffff;
+}
+
+.strategy-faq-example-title {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  margin-bottom: 9px;
+  color: #0e6179;
+  font-size: .76rem;
+  font-weight: 900;
+  letter-spacing: .07em;
+  text-transform: uppercase;
+}
+
+.strategy-faq-example-title span {
+  display: grid;
+  width: 22px;
+  height: 22px;
+  place-items: center;
+  border-radius: 7px;
+  color: #ffffff;
+  background: linear-gradient(135deg, #16afc9, #4ad1e3);
+  font-size: .82rem;
+}
+
+.strategy-faq-example ul {
+  display: grid;
+  gap: 6px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.strategy-faq-example li {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  color: #4d6269;
+}
+
+.strategy-faq-example li b {
+  color: #244d5c;
+  text-align: right;
+  white-space: nowrap;
+}
+
+.strategy-faq-callout {
+  margin-top: 12px;
+  padding: 11px 12px;
+  border-left: 4px solid #2fc5da;
+  border-radius: 0 10px 10px 0;
+  color: #2c5d6c;
+  background: #e9f9fc;
+  font-size: .82rem;
+  font-weight: 750;
+}
+
+.strategy-faq-disclaimer {
+  margin-top: 11px !important;
+  color: #839196;
+  font-size: .73rem;
+  line-height: 1.4;
+}
+
+@media (max-width: 390px) {
+  .strategy-faq-intro,
+  .strategy-faq-answer { padding-left: 14px; padding-right: 14px; }
+  .strategy-faq-question { padding-left: 14px; padding-right: 13px; font-size: .87rem; }
+  .strategy-faq-example { padding: 11px; }
+}
