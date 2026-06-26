@@ -9,6 +9,15 @@
   <title>DebtWizard</title>
   <link rel="stylesheet" href="styles-v2.css?v=11">
   <link rel="stylesheet" href="styles-v3.css?v=11">
+  <style>
+    .budget-hero { background:linear-gradient(180deg,#35bf59 0%,#27ad4d 100%) !important; }
+    .budget-hero .budget-title,.budget-hero .budget-subtitle { color:#fff !important; }
+    .budget-hero .icon-btn { color:#0a526d; background:#ffffffde; }
+    .budget-view-tabs { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:0; margin-top:15px; border:2px solid rgba(8,93,35,.30); border-radius:12px; overflow:hidden; background:rgba(9,133,52,.43); }
+    .budget-view-tabs button { min-height:42px; border:0; color:#fff; background:transparent; font-size:.95rem; font-weight:800; }
+    .budget-view-tabs button.active { color:#fff; background:rgba(255,255,255,.18); box-shadow:inset 0 0 0 1px rgba(255,255,255,.22); }
+    .budget-page .budget-summary-primary { background:linear-gradient(140deg,#0b4b76,#0a6b9d) !important; }
+  </style>
 </head>
 <body>
   <div id="app-shell">
@@ -24,16 +33,115 @@
   <script src="paycheck-timing-guide-v2.js?v=19"></script>
   <script src="paycheck-funding-sync-v1.js?v=18"></script>
   <script src="paycheck-track-open-v1.js?v=18"></script>
-  <script src="paycheck-form-layout-fix-v3.js?v=20"></script>
-  <script src="paycheck-form-overlap-fix-v4.js?v=21"></script>
-  <script src="debt-entry-mobile-v2.js?v=17"></script>
-  <script src="amortization-v1.js?v=11"></script>
-  <script src="transaction-details-v1.js?v=11"></script>
-  <script src="track-payment-details-v2.js?v=22"></script>
-  <script src="utilization-v1.js?v=12"></script>
-  <script src="utilization-reference-v3.js?v=15"></script>
-  <script src="utilization-detail-fix-v4.js?v=16"></script>
-  <script src="bootstrap-v2.js?v=30" defer></script>
-  <script src="budget-workspace-v3.js?v=30" defer></script>
+  <script src="paycheck-form-layout-fix-v3.js?v=21"></script>
+  <script src="paycheck-form-overlap-fix-v4.js?v=22"></script>
+  <script src="debt-entry-mobile-v2.js?v=18"></script>
+  <script src="amortization-v1.js?v=12"></script>
+  <script src="transaction-details-v1.js?v=12"></script>
+  <script src="track-payment-details-v2.js?v=23"></script>
+  <script src="utilization-v1.js?v=13"></script>
+  <script src="utilization-reference-v3.js?v=16"></script>
+  <script src="utilization-detail-fix-v4.js?v=17"></script>
+  <script src="bootstrap-v2.js?v=31" defer></script>
+  <script src="budget-workspace-v3.js?v=31" defer></script>
+  <script>
+    (() => {
+      let view = "planned";
+      const format = new Intl.NumberFormat("en-US", { style: "currency", currency: "USD" });
+      const number = value => Number.isFinite(Number.parseFloat(value)) ? Number.parseFloat(value) : 0;
+      const cents = value => Math.round((number(value) + Number.EPSILON) * 100) / 100;
+      const read = (key, fallback) => { try { return JSON.parse(localStorage.getItem(key)) || fallback; } catch { return fallback; } };
+      const amountFrom = text => number(String(text || "").replace(/[^0-9.-]/g, ""));
+      const monthKeyFromScreen = () => {
+        const title = document.querySelector(".budget-month-current")?.textContent?.trim();
+        const date = title ? new Date(`${title} 1`) : new Date();
+        return Number.isNaN(date.getTime()) ? `${new Date().getFullYear()}-${String(new Date().getMonth()+1).padStart(2,"0")}` : `${date.getFullYear()}-${String(date.getMonth()+1).padStart(2,"0")}`;
+      };
+      const debtTotals = monthKey => {
+        const debt = read("debt-calculator-v2", { debts: [], payments: [], settings: {} });
+        const planned = cents((debt.debts || []).filter(item => number(item.balance) > 0).reduce((sum, item) => sum + Math.max(0, number(item.minimum)), 0) + Math.max(0, number(debt.settings?.extra)));
+        const actual = cents((debt.payments || []).filter(item => String(item.date || "").slice(0, 7) === monthKey).reduce((sum, item) => sum + Math.max(0, number(item.amount)), 0));
+        return { planned, actual };
+      };
+      const totals = () => {
+        const monthKey = monthKeyFromScreen();
+        const budget = read("debtwizard-budget-v3", { months: {} });
+        const month = budget.months?.[monthKey] || { incomes: [], groups: [], transactions: [] };
+        const debt = debtTotals(monthKey);
+        const incomePlan = cents((month.incomes || []).reduce((sum, item) => sum + number(item.amount), 0));
+        const incomeActual = cents((month.transactions || []).filter(item => item.type === "income").reduce((sum, item) => sum + number(item.amount), 0));
+        let plan = 0, actual = 0;
+        (month.groups || []).forEach(group => (group.items || []).forEach(item => {
+          plan += item.automatic ? debt.planned : number(item.planned);
+          actual += item.automatic ? debt.actual : (month.transactions || []).filter(transaction => transaction.type === "expense" && String(transaction.itemId) === String(item.id)).reduce((sum, transaction) => sum + number(transaction.amount), 0);
+        }));
+        return { incomePlan: cents(incomePlan), incomeActual: cents(incomeActual), plan: cents(plan), actual: cents(actual), debt };
+      };
+      const insertTabs = () => {
+        const header = document.querySelector(".budget-hero .budget-inner");
+        if (!header || header.querySelector(".budget-view-tabs")) return;
+        const tabs = document.createElement("div");
+        tabs.className = "budget-view-tabs";
+        tabs.innerHTML = '<button type="button" data-budget-view="planned">Planned</button><button type="button" data-budget-view="spent">Spent</button><button type="button" data-budget-view="remaining">Remaining</button>';
+        header.appendChild(tabs);
+      };
+      const apply = () => {
+        if (!document.querySelector(".budget-page")) return;
+        insertTabs();
+        const tabs = document.querySelectorAll("[data-budget-view]");
+        tabs.forEach(tab => tab.classList.toggle("active", tab.dataset.budgetView === view));
+        const t = totals();
+        const primaryLabel = document.querySelector(".budget-summary-primary span");
+        const primaryValue = document.querySelector(".budget-summary-primary strong");
+        const primarySmall = document.querySelector(".budget-summary-primary small");
+        const mini = document.querySelectorAll(".budget-summary-mini");
+        const status = document.querySelector(".budget-status");
+        const info = view === "planned"
+          ? { label: "Planned income", value: t.incomePlan, small: `Planned outflow ${format.format(t.plan)}`, mini1: ["Planned outflow", t.plan], mini2: ["Debt payments", t.debt.planned], remaining: t.incomePlan - t.plan }
+          : view === "spent"
+            ? { label: "Spent so far", value: t.actual, small: `Income received ${format.format(t.incomeActual)}`, mini1: ["Income received", t.incomeActual], mini2: ["Debt paid", t.debt.actual], remaining: t.incomeActual - t.actual }
+            : { label: "Remaining to spend", value: Math.max(0, t.incomePlan - t.actual), small: `Planned income ${format.format(t.incomePlan)}`, mini1: ["Budget remaining", Math.max(0, t.plan - t.actual)], mini2: ["Debt remaining", Math.max(0, t.debt.planned - t.debt.actual)], remaining: t.incomePlan - t.plan };
+        if (primaryLabel) primaryLabel.textContent = info.label;
+        if (primaryValue) primaryValue.textContent = format.format(cents(info.value));
+        if (primarySmall) primarySmall.textContent = info.small;
+        if (mini[0]) { mini[0].querySelector("span").textContent = info.mini1[0]; mini[0].querySelector("strong").textContent = format.format(cents(info.mini1[1])); }
+        if (mini[1]) { mini[1].querySelector("span").textContent = info.mini2[0]; mini[1].querySelector("strong").textContent = format.format(cents(info.mini2[1])); }
+        if (status) {
+          status.classList.remove("ok", "left", "over");
+          const remaining = cents(info.remaining);
+          status.classList.add(Math.abs(remaining) < .005 ? "ok" : remaining > 0 ? "left" : "over");
+          status.lastElementChild.textContent = view === "spent" ? `${format.format(Math.max(0, remaining))} available from received income` : Math.abs(remaining) < .005 ? "Every dollar has a job" : remaining > 0 ? `${format.format(remaining)} left to budget` : `${format.format(-remaining)} over budget`;
+        }
+        document.querySelectorAll(".budget-line").forEach(line => {
+          const actual = amountFrom(line.querySelector(".budget-line-actual")?.textContent);
+          const planned = amountFrom(line.querySelector(".budget-line-plan")?.textContent);
+          const label = line.querySelector(".budget-line-actual");
+          const value = line.querySelector(".budget-line-plan");
+          if (!label || !value) return;
+          if (view === "planned") { label.textContent = "Planned"; value.textContent = format.format(planned); }
+          if (view === "spent") { label.textContent = "Spent"; value.textContent = format.format(actual); }
+          if (view === "remaining") { label.textContent = "Remaining"; value.textContent = format.format(Math.max(0, planned - actual)); }
+        });
+        document.querySelectorAll(".budget-group-total").forEach(block => {
+          const strong = block.querySelector("strong");
+          if (!strong) return;
+          const values = strong.textContent.split("/").map(amountFrom);
+          const planned = values[0] || 0, actual = values[1] || 0;
+          block.firstChild.textContent = view === "planned" ? "Planned" : view === "spent" ? "Spent" : "Remaining";
+          strong.textContent = format.format(view === "planned" ? planned : view === "spent" ? actual : Math.max(0, planned - actual));
+        });
+      };
+      document.addEventListener("click", event => {
+        const button = event.target.closest("[data-budget-view]");
+        if (!button) return;
+        event.preventDefault();
+        event.stopPropagation();
+        view = button.dataset.budgetView;
+        apply();
+      }, true);
+      new MutationObserver(apply).observe(document.body, { childList: true, subtree: true });
+      setInterval(apply, 350);
+    })();
+  </script>
 </body>
 </html>
