@@ -100,7 +100,9 @@
       const fullDueLabel = day => day ? `${new Date(monthParts()[0], monthParts()[1] - 1, Math.max(1, num(day))).toLocaleDateString('en-US',{month:'long'})} ${dueSuffix(day)}` : 'Select Date';
       const load = () => { try { return JSON.parse(localStorage.getItem(STORE)) || {}; } catch { return {}; } };
       const saveState = state => localStorage.setItem(STORE, JSON.stringify(state));
+      const cleanIncomeItems = items => Array.isArray(items) ? items.map(item => ({ id:String(item.id||uid()), name:String(item.name||'').trim(), type:incomeLabels[item.type] ? item.type : 'otherIncome', amount:Math.max(0,num(item.amount)), payDay:Math.max(0,Math.min(31,Math.floor(num(item.payDay ?? item.dueDay)))), note:String(item.note||'') })).filter(item => item.name && item.amount > .004) : [];
       const cleanBills = bills => Array.isArray(bills) ? bills.map(item => ({ id:String(item.id||uid()), name:String(item.name||'').trim(), category:categoryLabels[item.category] ? item.category : 'other', amount:Math.max(0,num(item.amount)), dueDay:Math.max(0,Math.min(31,Math.floor(num(item.dueDay)))), note:String(item.note||'') })).filter(item => item.name && item.amount > .004) : [];
+      const firstDay = value => String(value || '').split(/[,\s]+/).map(item => Math.floor(num(item))).find(day => day >= 1 && day <= 31) || 0;
       function ensureBudget(state) {
         state.settings = state.settings && typeof state.settings === 'object' ? state.settings : {};
         state.settings.monthlyBudgets = state.settings.monthlyBudgets && typeof state.settings.monthlyBudgets === 'object' ? state.settings.monthlyBudgets : {};
@@ -109,9 +111,8 @@
         budget.incomeSources = budget.incomeSources && typeof budget.incomeSources === 'object' ? budget.incomeSources : {};
         budget.budgetCategories = budget.budgetCategories && typeof budget.budgetCategories === 'object' ? budget.budgetCategories : {};
         budget.bills = cleanBills(budget.bills);
-        if (!Array.isArray(budget.incomeItems)) {
-          budget.incomeItems = incomeTypes.map(([key,label]) => ({ id: uid(), name: label, type: key, amount: Math.max(0,num(budget.incomeSources[key])), note: '' })).filter(item => item.amount > .004);
-        }
+        const defaultIncomeItems = incomeTypes.map(([key,label]) => ({ id: uid(), name: label, type: key, amount: Math.max(0,num(budget.incomeSources[key])), payDay: firstDay(budget.schedule?.income?.[key]), note: '' })).filter(item => item.amount > .004);
+        budget.incomeItems = cleanIncomeItems(Array.isArray(budget.incomeItems) ? budget.incomeItems : defaultIncomeItems).map(item => item.payDay ? item : { ...item, payDay: firstDay(budget.schedule?.income?.[item.type]) });
         const movedCategories = [];
         categories.forEach(([key,label]) => {
           const amount = Math.max(0,num(budget.budgetCategories[key]));
@@ -123,17 +124,21 @@
       }
       function syncTotals(state, budget) {
         const incomeSources = Object.fromEntries(incomeTypes.map(([key]) => [key, 0]));
+        budget.incomeItems = cleanIncomeItems(budget.incomeItems);
         (budget.incomeItems || []).forEach(item => { const key = incomeLabels[item.type] ? item.type : 'otherIncome'; incomeSources[key] += Math.max(0,num(item.amount)); });
         budget.incomeSources = incomeSources;
         budget.budgetCategories = Object.fromEntries(categories.map(([key]) => [key, 0]));
         budget.bills = cleanBills(budget.bills);
+        budget.schedule = budget.schedule && typeof budget.schedule === 'object' ? budget.schedule : { buffer:0, income:{}, budget:{} };
+        budget.schedule.income = Object.fromEntries(incomeTypes.map(([key]) => [key, budget.incomeItems.filter(item => item.type === key && item.payDay > 0).map(item => item.payDay).join(', ')]));
         state.settings.incomeSources = incomeSources;
         state.settings.budgetCategories = budget.budgetCategories;
         state.settings.budgetBills = budget.bills;
+        state.settings.budgetSchedule = budget.schedule;
       }
       const sectionByTitle = title => [...document.querySelectorAll('.section')].find(section => (section.querySelector('.section-title')?.textContent || '').trim().startsWith(title));
       const hiddenInputs = (prefix, values) => Object.entries(values).map(([key,value]) => `<input type="hidden" name="${prefix}-${key}" value="${num(value)}">`).join('');
-      const itemRow = (item, kind) => `<button type="button" class="edp-item-row" data-edp-act="edit" data-kind="${kind}" data-id="${esc(item.id)}"><span><strong>${esc(item.name)}</strong><small>${kind === 'income' ? incomeLabels[item.type] || 'Income' : `${categoryLabels[item.category] || 'Other'}${item.dueDay ? ` · Due ${item.dueDay}` : ''}`}${item.note ? ` · ${esc(item.note)}` : ''}</small></span><span class="edp-amount">${money(item.amount)}<small>Edit ›</small></span></button>`;
+      const itemRow = (item, kind) => `<button type="button" class="edp-item-row" data-edp-act="edit" data-kind="${kind}" data-id="${esc(item.id)}"><span><strong>${esc(item.name)}</strong><small>${kind === 'income' ? `${incomeLabels[item.type] || 'Income'}${item.payDay ? ` · Pay ${fullDueLabel(item.payDay)}` : ''}` : `${categoryLabels[item.category] || 'Other'}${item.dueDay ? ` · Due ${item.dueDay}` : ''}`}${item.note ? ` · ${esc(item.note)}` : ''}</small></span><span class="edp-amount">${money(item.amount)}<small>Edit ›</small></span></button>`;
       function renderEnhancements() {
         const budgetForm = document.getElementById('budget-form');
         if (!budgetForm || !document.querySelector('.tab-btn.active[data-page="budget"]')) return;
@@ -158,8 +163,11 @@
         }
         const billsSection = sectionByTitle('Bills');
         if (billsSection) billsSection.classList.add('edp-hidden');
+        const cashFlowSection = sectionByTitle('Cash-flow schedule');
+        const incomeDatesCard = [...(cashFlowSection?.querySelectorAll('.budget-card') || [])].find(card => (card.querySelector('.budget-card-title')?.textContent || '').trim() === 'Income dates');
+        incomeDatesCard?.remove();
       }
-      function openDueDatePicker(currentDay, onSave) {
+      function openDueDatePicker(currentDay, onSave, title = 'Due Date') {
         let selectedDay = Math.max(0, Math.min(31, Math.floor(num(currentDay))));
         let expanded = false;
         let repeat = true;
@@ -176,7 +184,7 @@
           return cells.join('');
         };
         const paint = () => {
-          sheet.innerHTML = `<div class="edp-date-top">Due Date<button type="button" class="edp-date-close" aria-label="Close due date">×</button></div><article class="edp-date-card"><button type="button" class="edp-date-row ${expanded ? 'open' : ''}" data-date-toggle><span>Date</span><span class="edp-date-value">${selectedDay ? dueSuffix(selectedDay) : 'Select Date'} ${expanded ? '⌃' : '⌄'}</span></button>${expanded ? `<div class="edp-calendar"><h3 class="edp-cal-title">${monthLabel()}</h3><div class="edp-week"><span>Sun</span><span>Mon</span><span>Tue</span><span>Wed</span><span>Thu</span><span>Fri</span><span>Sat</span></div><div class="edp-days">${renderDays()}</div></div>` : ''}<div class="edp-switch-row"><strong>Repeat Monthly</strong><button type="button" class="edp-switch ${repeat ? 'on' : ''}" data-repeat aria-label="Repeat monthly"></button></div><div class="edp-switch-row"><span><strong>Remind Me</strong><small>We'll notify you three days before it's due.</small></span><button type="button" class="edp-switch ${remind ? 'on' : ''}" data-remind aria-label="Remind me"></button></div></article><button type="button" class="edp-date-save" ${selectedDay ? '' : 'disabled'}>Save</button>`;
+          sheet.innerHTML = `<div class="edp-date-top">${title}<button type="button" class="edp-date-close" aria-label="Close date picker">×</button></div><article class="edp-date-card"><button type="button" class="edp-date-row ${expanded ? 'open' : ''}" data-date-toggle><span>Date</span><span class="edp-date-value">${selectedDay ? dueSuffix(selectedDay) : 'Select Date'} ${expanded ? '⌃' : '⌄'}</span></button>${expanded ? `<div class="edp-calendar"><h3 class="edp-cal-title">${monthLabel()}</h3><div class="edp-week"><span>Sun</span><span>Mon</span><span>Tue</span><span>Wed</span><span>Thu</span><span>Fri</span><span>Sat</span></div><div class="edp-days">${renderDays()}</div></div>` : ''}<div class="edp-switch-row"><strong>Repeat Monthly</strong><button type="button" class="edp-switch ${repeat ? 'on' : ''}" data-repeat aria-label="Repeat monthly"></button></div><div class="edp-switch-row"><span><strong>Remind Me</strong><small>We'll notify you three days before it's due.</small></span><button type="button" class="edp-switch ${remind ? 'on' : ''}" data-remind aria-label="Remind me"></button></div></article><button type="button" class="edp-date-save" ${selectedDay ? '' : 'disabled'}>Save</button>`;
         };
         sheet.addEventListener('click', event => {
           if (event.target.closest('.edp-date-close')) return sheet.remove();
@@ -194,25 +202,27 @@
         const { state, budget } = ensureBudget(load());
         const isIncome = kind === 'income';
         const items = isIncome ? (budget.incomeItems || []) : budget.bills;
-        const item = items.find(entry => entry.id === id) || { id:'', name:'', amount:'', type:'paycheck', category: category || 'housing', dueDay:'', note:'' };
+        const item = items.find(entry => entry.id === id) || { id:'', name:'', amount:'', type:'paycheck', category: category || 'housing', payDay:'', dueDay:'', note:'' };
         const typeOptions = (isIncome ? incomeTypes : categories).map(([key,label]) => `<option value="${key}" ${(isIncome ? item.type : item.category) === key ? 'selected' : ''}>${label}</option>`).join('');
+        const dateField = isIncome ? `<label class="edp-field edp-due-select"><span>Pay date</span><button type="button" id="edp-due-button" data-edp-due-open data-date-title="Pay Date">${item.payDay ? fullDueLabel(item.payDay) : 'Select Date'}</button><input id="edp-due" type="hidden" value="${num(item.payDay) || ''}"></label>` : `<label class="edp-field edp-due-select"><span>Due date</span><button type="button" id="edp-due-button" data-edp-due-open data-date-title="Due Date">${item.dueDay ? fullDueLabel(item.dueDay) : 'Select Date'}</button><input id="edp-due" type="hidden" value="${num(item.dueDay) || ''}"></label>`;
         const backdrop = document.createElement('button');
         backdrop.type = 'button'; backdrop.className = 'edp-backdrop'; backdrop.setAttribute('aria-label','Close editor');
         const popup = document.createElement('section');
         popup.className = 'edp-popup';
-        popup.innerHTML = `<h3 class="edp-title">${id ? 'Edit' : 'Add'} ${isIncome ? 'income' : 'item'}</h3><label class="edp-field"><span>Name</span><input id="edp-name" value="${esc(item.name)}" placeholder="${isIncome ? 'Paycheck' : 'Rent'}"></label><label class="edp-field"><span>${isIncome ? 'Income type' : 'Category'}</span><select id="edp-type">${typeOptions}</select></label><label class="edp-field"><span>Amount</span><input id="edp-amount" type="number" min="0" step="0.01" inputmode="decimal" value="${num(item.amount) || ''}" placeholder="0.00"></label>${isIncome ? '' : `<label class="edp-field edp-due-select"><span>Due date</span><button type="button" id="edp-due-button" data-edp-due-open>${item.dueDay ? fullDueLabel(item.dueDay) : 'Select Date'}</button><input id="edp-due" type="hidden" value="${num(item.dueDay) || ''}"></label>`}<label class="edp-note"><span>Notes</span><textarea id="edp-note" placeholder="Optional note">${esc(item.note || '')}</textarea></label><div class="edp-actions"><button type="button" class="btn" data-edp-save>Save</button><button type="button" class="btn secondary" data-edp-close>Cancel</button>${id ? '<button type="button" class="btn danger" data-edp-delete>Delete</button>' : ''}</div>`;
+        popup.innerHTML = `<h3 class="edp-title">${id ? 'Edit' : 'Add'} ${isIncome ? 'income' : 'item'}</h3><label class="edp-field"><span>Name</span><input id="edp-name" value="${esc(item.name)}" placeholder="${isIncome ? 'Paycheck' : 'Rent'}"></label><label class="edp-field"><span>${isIncome ? 'Income type' : 'Category'}</span><select id="edp-type">${typeOptions}</select></label><label class="edp-field"><span>Amount</span><input id="edp-amount" type="number" min="0" step="0.01" inputmode="decimal" value="${num(item.amount) || ''}" placeholder="0.00"></label>${dateField}<label class="edp-note"><span>Notes</span><textarea id="edp-note" placeholder="Optional note">${esc(item.note || '')}</textarea></label><div class="edp-actions"><button type="button" class="btn" data-edp-save>Save</button><button type="button" class="btn secondary" data-edp-close>Cancel</button>${id ? '<button type="button" class="btn danger" data-edp-delete>Delete</button>' : ''}</div>`;
         const close = () => { backdrop.remove(); popup.remove(); };
         backdrop.addEventListener('click', close); popup.querySelector('[data-edp-close]').addEventListener('click', close);
-        popup.querySelector('[data-edp-due-open]')?.addEventListener('click', () => openDueDatePicker(document.getElementById('edp-due')?.value, day => { document.getElementById('edp-due').value = day; document.getElementById('edp-due-button').textContent = fullDueLabel(day); }));
+        popup.querySelector('[data-edp-due-open]')?.addEventListener('click', event => openDueDatePicker(document.getElementById('edp-due')?.value, day => { document.getElementById('edp-due').value = day; document.getElementById('edp-due-button').textContent = fullDueLabel(day); }, event.currentTarget.dataset.dateTitle || 'Due Date'));
         popup.querySelector('[data-edp-save]').addEventListener('click', () => {
           const name = document.getElementById('edp-name').value.trim(); const amount = Math.max(0,num(document.getElementById('edp-amount').value));
           if (!name || amount <= .004) return;
+          const selectedDay = Math.max(0,Math.min(31,Math.floor(num(document.getElementById('edp-due').value))));
           const next = { id: id || uid(), name, amount, note: document.getElementById('edp-note').value.trim() };
-          if (isIncome) { next.type = document.getElementById('edp-type').value; budget.incomeItems = [...(budget.incomeItems || []).filter(entry => entry.id !== next.id), next]; }
-          else { next.category = document.getElementById('edp-type').value; next.dueDay = Math.max(0,Math.min(31,Math.floor(num(document.getElementById('edp-due').value)))); budget.bills = cleanBills([...(budget.bills || []).filter(entry => entry.id !== next.id), next]); }
+          if (isIncome) { next.type = document.getElementById('edp-type').value; next.payDay = selectedDay; budget.incomeItems = cleanIncomeItems([...(budget.incomeItems || []).filter(entry => entry.id !== next.id), next]); }
+          else { next.category = document.getElementById('edp-type').value; next.dueDay = selectedDay; budget.bills = cleanBills([...(budget.bills || []).filter(entry => entry.id !== next.id), next]); }
           syncTotals(state,budget); saveState(state); location.reload();
         });
-        popup.querySelector('[data-edp-delete]')?.addEventListener('click', () => { if (isIncome) budget.incomeItems = (budget.incomeItems || []).filter(entry => entry.id !== id); else budget.bills = cleanBills(budget.bills).filter(entry => entry.id !== id); syncTotals(state,budget); saveState(state); location.reload(); });
+        popup.querySelector('[data-edp-delete]')?.addEventListener('click', () => { if (isIncome) budget.incomeItems = cleanIncomeItems((budget.incomeItems || []).filter(entry => entry.id !== id)); else budget.bills = cleanBills(budget.bills).filter(entry => entry.id !== id); syncTotals(state,budget); saveState(state); location.reload(); });
         document.body.append(backdrop,popup);
       }
       function patchLegacyDueInputs() {
