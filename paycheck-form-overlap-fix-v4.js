@@ -9,7 +9,6 @@
   const incomeLabels = Object.fromEntries(incomeTypes);
   const monthNames = { january:"01", february:"02", march:"03", april:"04", may:"05", june:"06", july:"07", august:"08", september:"09", october:"10", november:"11", december:"12" };
   const number = value => Number.isFinite(Number.parseFloat(value)) ? Number.parseFloat(value) : 0;
-  const escapeHtml = value => String(value ?? "").replace(/[&<>'"]/g, char => ({ "&":"&amp;", "<":"&lt;", ">":"&gt;", "'":"&#39;", '"':"&quot;" }[char]));
   const uid = () => `item-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`;
 
   function addStyles() {
@@ -17,6 +16,9 @@
     const style = document.createElement("style");
     style.id = "paycheck-form-overlap-fix-v4-styles";
     style.textContent = `
+      #tabbar { z-index: 180 !important; }
+      .edp-backdrop, .budget-edit-backdrop { bottom: calc(82px + env(safe-area-inset-bottom, 0px)) !important; }
+      .edp-date-popup { bottom: calc(82px + env(safe-area-inset-bottom, 0px)) !important; padding-bottom: calc(24px + env(safe-area-inset-bottom, 0px)) !important; }
       /* The native iPhone date input has a wide intrinsic minimum. On phone
          widths, stack payroll fields so neither control can overlap. */
       @media (max-width: 560px) {
@@ -150,6 +152,11 @@
     state.settings.incomeSources = incomeSources;
   }
 
+  function clearBudgetOverlays() {
+    document.querySelectorAll(".edp-backdrop,.edp-popup,.edp-date-popup,.budget-edit-backdrop").forEach(node => node.remove());
+    window.__debtWizardIncomeEditId = "";
+  }
+
   function openPayDatePicker(currentDay, onSave) {
     let selectedDay = Math.max(0, Math.min(31, Math.floor(number(currentDay))));
     let expanded = false;
@@ -240,10 +247,27 @@
     }, true);
   }
 
+  function queueApply(delay = 0) {
+    setTimeout(apply, delay);
+  }
+
   document.addEventListener("click", event => {
     const trigger = event.target.closest('[data-edp-act][data-kind="income"]');
-    if (trigger) window.__debtWizardIncomeEditId = trigger.dataset.id || "";
+    if (trigger) {
+      window.__debtWizardIncomeEditId = trigger.dataset.id || "";
+      queueApply(0);
+      queueApply(80);
+    } else {
+      queueApply(120);
+    }
   }, true);
+
+  document.getElementById("tabbar")?.addEventListener("click", () => {
+    clearBudgetOverlays();
+    queueApply(140);
+  }, true);
+
+  window.addEventListener("load", () => queueApply(600));
 
   function apply() {
     addStyles();
@@ -255,6 +279,5 @@
   }
 
   new MutationObserver(apply).observe(root, { childList: true, subtree: true });
-  new MutationObserver(apply).observe(document.body, { childList: true, subtree: true });
   apply();
 })();
