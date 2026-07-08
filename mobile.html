@@ -22,6 +22,7 @@
     .budget-bill-row{cursor:pointer}.budget-bill-row:active{transform:scale(.997)}.budget-bill-amount small{font-weight:850}.budget-note-field textarea{min-height:86px}
     .edp-card{border:1px solid var(--line,#e1e8ea);border-radius:20px;background:#fff;padding:16px;margin:12px 0;box-shadow:0 1px 0 rgba(15,45,58,.03)}
     .edp-section-head,.edp-cat-head{display:flex;justify-content:space-between;align-items:center;gap:12px;margin-bottom:8px}.edp-cat-title{font-size:1.14rem;font-weight:900;color:#263137}.edp-cat-total{font-weight:900;color:#58666c}.edp-item-row{width:100%;border:0;background:#fff;display:grid;grid-template-columns:minmax(0,1fr) auto;gap:12px;align-items:center;text-align:left;padding:13px 0;border-bottom:1px solid var(--line,#e5ecee)}.edp-item-row:last-of-type{border-bottom:0}.edp-item-row strong{display:block;color:#263137;font-size:1rem;font-weight:800;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.edp-item-row small{display:block;color:#8a979d;font-size:.78rem;margin-top:3px}.edp-amount{text-align:right;font-size:1.05rem;font-weight:900;color:#263137}.edp-amount small{display:block;color:#0f7893;font-size:.72rem;font-weight:850;margin-top:3px}.edp-add{border:0;background:transparent;color:#0079a8;font-size:1rem;font-weight:800;padding:13px 0 0;text-align:left}.edp-empty{color:#8a979d;font-size:.9rem;line-height:1.35;margin:8px 0}.edp-hidden{display:none!important}.edp-field{display:grid;grid-template-columns:minmax(0,1fr) 148px;gap:12px;align-items:center;padding:12px 0;border-bottom:1px solid var(--line,#e5ecee)}.edp-field span{color:#59666b;font-size:1rem;font-weight:800}.edp-field input,.edp-field select{width:100%;min-height:44px;border:1px solid #dce6e8;border-radius:12px;padding:9px 10px;color:#334449;background:#fff;text-align:right;font-size:16px;font-weight:850}.edp-field select{text-align:left}.edp-note{display:grid;gap:7px;padding:12px 0}.edp-note span{color:#59666b;font-size:1rem;font-weight:800}.edp-note textarea{width:100%;min-height:88px;border:1px solid #dce6e8;border-radius:12px;padding:10px;color:#334449;background:#fff;font-size:16px;font-weight:700;resize:vertical}.edp-actions{display:grid;grid-template-columns:1fr 1fr;gap:9px;position:sticky;bottom:0;background:#fff;padding-top:12px}.edp-actions .danger{grid-column:1 / -1}.edp-actions .btn{min-height:48px}.edp-actions .secondary{background:#eaf9fc;color:#0f7893}.edp-actions .danger{background:#fff0ef;color:#bd4337;border:1px solid #ffd3cf}
+    .edp-due-select button{width:100%;min-height:44px;border:0;background:transparent;color:#0079a8;text-align:right;font-size:16px;font-weight:900;padding:0}.edp-date-popup{position:fixed;z-index:120;inset:0;background:#f6f7f8;padding:18px 14px calc(20px + env(safe-area-inset-bottom,0px));display:flex;flex-direction:column;overflow:auto}.edp-date-popup::before{content:"";width:44px;height:5px;border-radius:999px;background:#9ea8ad;margin:8px auto 12px}.edp-date-top{position:relative;text-align:center;font-size:1.26rem;font-weight:900;color:#222;margin-bottom:20px}.edp-date-close{position:absolute;right:4px;top:-12px;border:0;background:transparent;color:#222;font-size:2.5rem;line-height:1;padding:8px}.edp-date-card{background:#fff;border-radius:18px;box-shadow:0 10px 28px rgba(25,43,52,.08);overflow:hidden}.edp-date-row{width:100%;border:0;background:#fff;display:grid;grid-template-columns:minmax(0,1fr) auto;gap:12px;align-items:center;text-align:left;padding:17px 18px;font-size:1.05rem;color:#1f2b31}.edp-date-row.open{background:#eaf6ff}.edp-date-value{color:#0079a8;font-weight:800}.edp-calendar{padding:22px 18px 18px;border-top:1px solid #e5ecee}.edp-cal-title{margin:0 0 18px;color:#20272c;font-size:1.85rem;line-height:1;font-weight:900}.edp-week,.edp-days{display:grid;grid-template-columns:repeat(7,1fr);text-align:center;align-items:center}.edp-week span{color:#566168;font-size:.92rem;font-weight:700;padding:8px 0}.edp-day{height:44px;border:0;border-radius:999px;background:transparent;color:#0079a8;font-size:1.2rem;font-weight:800}.edp-day.selected{background:#004a75;color:#fff}.edp-day.blank{visibility:hidden}.edp-switch-row{display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:center;gap:12px;padding:17px 18px;border-top:1px solid #e5ecee}.edp-switch-row strong{display:block;font-size:1.04rem;color:#222}.edp-switch-row small{display:block;margin-top:3px;color:#444;font-size:.9rem;line-height:1.2}.edp-switch{width:52px;height:31px;border:0;border-radius:999px;background:#b8c1c6;position:relative}.edp-switch::after{content:"";position:absolute;width:27px;height:27px;left:2px;top:2px;border-radius:50%;background:#fff;box-shadow:0 1px 3px rgba(0,0,0,.18)}.edp-switch.on{background:#004a75}.edp-switch.on::after{left:23px}.edp-date-save{margin-top:auto;width:100%;min-height:58px;border:0;border-radius:13px;background:#004a75;color:#fff;font-size:1.22rem;font-weight:900}.edp-date-save:disabled{background:#9fb3c2;color:#edf4f7}
   </style>
 </head>
 <body>
@@ -46,7 +47,7 @@
   <script src="utilization-v1.js?v=12"></script>
   <script src="utilization-reference-v3.js?v=15"></script>
   <script src="utilization-detail-fix-v4.js?v=16"></script>
-  <script src="bootstrap-v2.js?v=24" defer></script>
+  <script src="bootstrap-v2.js?v=25" defer></script>
   <script src="strategy-faq-v1.js?v=1" defer></script>
   <script>
     (() => {
@@ -93,6 +94,10 @@
         const match = text.match(/^([A-Za-z]+)\s+(20\d{2})$/);
         return match && monthNames[match[1].toLowerCase()] ? `${match[2]}-${monthNames[match[1].toLowerCase()]}` : thisMonth();
       };
+      const dueSuffix = day => { const value = Math.max(1,Math.min(31,Math.floor(num(day))||1)); const suffix = value % 10 === 1 && value % 100 !== 11 ? 'st' : value % 10 === 2 && value % 100 !== 12 ? 'nd' : value % 10 === 3 && value % 100 !== 13 ? 'rd' : 'th'; return `${value}${suffix}`; };
+      const monthParts = () => selectedMonth().split('-').map(Number);
+      const monthLabel = () => { const [year, month] = monthParts(); return new Date(year, month - 1, 1).toLocaleDateString('en-US', { month:'long', year:'numeric' }); };
+      const fullDueLabel = day => day ? `${new Date(...monthParts().map((part,index)=>index?part-1:part), Math.max(1,num(day))).toLocaleDateString('en-US',{month:'long'})} ${dueSuffix(day)}` : 'Select Date';
       const load = () => { try { return JSON.parse(localStorage.getItem(STORE)) || {}; } catch { return {}; } };
       const saveState = state => localStorage.setItem(STORE, JSON.stringify(state));
       const cleanBills = bills => Array.isArray(bills) ? bills.map(item => ({ id:String(item.id||uid()), name:String(item.name||'').trim(), category:categoryLabels[item.category] ? item.category : 'other', amount:Math.max(0,num(item.amount)), dueDay:Math.max(0,Math.min(31,Math.floor(num(item.dueDay)))), note:String(item.note||'') })).filter(item => item.name && item.amount > .004) : [];
@@ -154,6 +159,37 @@
         const billsSection = sectionByTitle('Bills');
         if (billsSection) billsSection.classList.add('edp-hidden');
       }
+      function openDueDatePicker(currentDay, onSave) {
+        let selectedDay = Math.max(0, Math.min(31, Math.floor(num(currentDay))));
+        let expanded = false;
+        let repeat = true;
+        let remind = false;
+        const sheet = document.createElement('section');
+        sheet.className = 'edp-date-popup';
+        const [year, month] = monthParts();
+        const maxDay = new Date(year, month, 0).getDate();
+        const renderDays = () => {
+          const first = new Date(year, month - 1, 1).getDay();
+          const cells = [];
+          for (let i = 0; i < first; i++) cells.push('<span class="edp-day blank"></span>');
+          for (let day = 1; day <= maxDay; day++) cells.push(`<button type="button" class="edp-day ${day === selectedDay ? 'selected' : ''}" data-day="${day}">${day}</button>`);
+          return cells.join('');
+        };
+        const paint = () => {
+          sheet.innerHTML = `<div class="edp-date-top">Due Date<button type="button" class="edp-date-close" aria-label="Close due date">×</button></div><article class="edp-date-card"><button type="button" class="edp-date-row ${expanded ? 'open' : ''}" data-date-toggle><span>Date</span><span class="edp-date-value">${selectedDay ? dueSuffix(selectedDay) : 'Select Date'} ${expanded ? '⌃' : '⌄'}</span></button>${expanded ? `<div class="edp-calendar"><h3 class="edp-cal-title">${monthLabel()}</h3><div class="edp-week"><span>Sun</span><span>Mon</span><span>Tue</span><span>Wed</span><span>Thu</span><span>Fri</span><span>Sat</span></div><div class="edp-days">${renderDays()}</div></div>` : ''}<div class="edp-switch-row"><strong>Repeat Monthly</strong><button type="button" class="edp-switch ${repeat ? 'on' : ''}" data-repeat aria-label="Repeat monthly"></button></div><div class="edp-switch-row"><span><strong>Remind Me</strong><small>We'll notify you three days before it's due.</small></span><button type="button" class="edp-switch ${remind ? 'on' : ''}" data-remind aria-label="Remind me"></button></div></article><button type="button" class="edp-date-save" ${selectedDay ? '' : 'disabled'}>Save</button>`;
+        };
+        sheet.addEventListener('click', event => {
+          if (event.target.closest('.edp-date-close')) return sheet.remove();
+          if (event.target.closest('[data-date-toggle]')) { expanded = !expanded; paint(); return; }
+          if (event.target.closest('[data-repeat]')) { repeat = !repeat; paint(); return; }
+          if (event.target.closest('[data-remind]')) { remind = !remind; paint(); return; }
+          const dayButton = event.target.closest('[data-day]');
+          if (dayButton) { selectedDay = Math.max(1, Math.min(maxDay, Math.floor(num(dayButton.dataset.day)))); paint(); return; }
+          if (event.target.closest('.edp-date-save') && selectedDay) { onSave(selectedDay); sheet.remove(); }
+        });
+        paint();
+        document.body.appendChild(sheet);
+      }
       function openPopup(kind, id = '', category = '') {
         const { state, budget } = ensureBudget(load());
         const isIncome = kind === 'income';
@@ -164,9 +200,10 @@
         backdrop.type = 'button'; backdrop.className = 'edp-backdrop'; backdrop.setAttribute('aria-label','Close editor');
         const popup = document.createElement('section');
         popup.className = 'edp-popup';
-        popup.innerHTML = `<h3 class="edp-title">${id ? 'Edit' : 'Add'} ${isIncome ? 'income' : 'item'}</h3><label class="edp-field"><span>Name</span><input id="edp-name" value="${esc(item.name)}" placeholder="${isIncome ? 'Paycheck' : 'Rent'}"></label><label class="edp-field"><span>${isIncome ? 'Income type' : 'Category'}</span><select id="edp-type">${typeOptions}</select></label><label class="edp-field"><span>Amount</span><input id="edp-amount" type="number" min="0" step="0.01" inputmode="decimal" value="${num(item.amount) || ''}" placeholder="0.00"></label>${isIncome ? '' : `<label class="edp-field"><span>Due day</span><input id="edp-due" type="number" min="1" max="31" step="1" inputmode="numeric" value="${num(item.dueDay) || ''}" placeholder="24"></label>`}<label class="edp-note"><span>Notes</span><textarea id="edp-note" placeholder="Optional note">${esc(item.note || '')}</textarea></label><div class="edp-actions"><button type="button" class="btn" data-edp-save>Save</button><button type="button" class="btn secondary" data-edp-close>Cancel</button>${id ? '<button type="button" class="btn danger" data-edp-delete>Delete</button>' : ''}</div>`;
+        popup.innerHTML = `<h3 class="edp-title">${id ? 'Edit' : 'Add'} ${isIncome ? 'income' : 'item'}</h3><label class="edp-field"><span>Name</span><input id="edp-name" value="${esc(item.name)}" placeholder="${isIncome ? 'Paycheck' : 'Rent'}"></label><label class="edp-field"><span>${isIncome ? 'Income type' : 'Category'}</span><select id="edp-type">${typeOptions}</select></label><label class="edp-field"><span>Amount</span><input id="edp-amount" type="number" min="0" step="0.01" inputmode="decimal" value="${num(item.amount) || ''}" placeholder="0.00"></label>${isIncome ? '' : `<label class="edp-field edp-due-select"><span>Due date</span><button type="button" id="edp-due-button" data-edp-due-open>${item.dueDay ? fullDueLabel(item.dueDay) : 'Select Date'}</button><input id="edp-due" type="hidden" value="${num(item.dueDay) || ''}"></label>`}<label class="edp-note"><span>Notes</span><textarea id="edp-note" placeholder="Optional note">${esc(item.note || '')}</textarea></label><div class="edp-actions"><button type="button" class="btn" data-edp-save>Save</button><button type="button" class="btn secondary" data-edp-close>Cancel</button>${id ? '<button type="button" class="btn danger" data-edp-delete>Delete</button>' : ''}</div>`;
         const close = () => { backdrop.remove(); popup.remove(); };
         backdrop.addEventListener('click', close); popup.querySelector('[data-edp-close]').addEventListener('click', close);
+        popup.querySelector('[data-edp-due-open]')?.addEventListener('click', () => openDueDatePicker(document.getElementById('edp-due')?.value, day => { document.getElementById('edp-due').value = day; document.getElementById('edp-due-button').textContent = fullDueLabel(day); }));
         popup.querySelector('[data-edp-save]').addEventListener('click', () => {
           const name = document.getElementById('edp-name').value.trim(); const amount = Math.max(0,num(document.getElementById('edp-amount').value));
           if (!name || amount <= .004) return;
