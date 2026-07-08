@@ -1,40 +1,15 @@
 <!doctype html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-  <meta name="theme-color" content="#cdeff4">
-  <meta name="apple-mobile-web-app-capable" content="yes">
-  <meta name="apple-mobile-web-app-status-bar-style" content="default">
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>DebtWizard</title>
-  <link rel="stylesheet" href="styles-v2.css?v=11">
-  <link rel="stylesheet" href="styles-v3.css?v=11">
-  <link rel="stylesheet" href="strategy-visual-refresh-v1.css?v=1">
-  <link rel="stylesheet" href="debt-entry-compact-v1.css?v=1">
-  <link rel="stylesheet" href="strategy-faq-v1.css?v=1">
+  <script>
+    location.replace(`mobile.html?v=30&strategyStyle=1${location.search ? '&' + location.search.slice(1) : ''}`);
+  </script>
 </head>
 <body>
-  <div id="app-shell">
-    <main id="screen" aria-live="polite"></main>
-    <nav id="tabbar" class="tabbar" aria-label="Primary navigation"></nav>
-  </div>
-  <div id="modal-root"></div>
-  <input id="backup-input" type="file" accept="application/json,.json" hidden>
-  <script src="track-v3.js?v=11"></script>
-  <script src="track-v4.js?v=18"></script>
-  <script src="modal-fix.js?v=12"></script>
-  <script src="paycheck-planner-v1.js?v=18"></script>
-  <script src="paycheck-timing-guide-v2.js?v=19"></script>
-  <script src="paycheck-funding-sync-v1.js?v=18"></script>
-  <script src="paycheck-track-open-v1.js?v=18"></script>
-  <script src="paycheck-form-layout-fix-v3.js?v=20"></script>
-  <script src="debt-entry-mobile-v2.js?v=17"></script>
-  <script src="amortization-v1.js?v=11"></script>
-  <script src="transaction-details-v1.js?v=11"></script>
-  <script src="utilization-v1.js?v=12"></script>
-  <script src="utilization-reference-v3.js?v=15"></script>
-  <script src="utilization-detail-fix-v4.js?v=16"></script>
-  <script src="bootstrap-v2.js?v=28" defer></script>
-  <script src="strategy-faq-v1.js?v=1" defer></script>
+  <p>Opening <a id="app-link" href="mobile.html?v=30&strategyStyle=1">DebtWizard</a>…</p>
+  <script>document.getElementById("app-link").href = `mobile.html?v=30&strategyStyle=1${location.search ? '&' + location.search.slice(1) : ''}`;</script>
 </body>
 </html>
