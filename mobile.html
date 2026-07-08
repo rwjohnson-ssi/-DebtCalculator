@@ -13,13 +13,15 @@
   <link rel="stylesheet" href="debt-entry-compact-v1.css?v=1">
   <link rel="stylesheet" href="strategy-faq-v1.css?v=1">
   <style>
-    .budget-edit-backdrop{position:fixed;z-index:89;inset:0;background:rgba(16,35,43,.42);backdrop-filter:blur(2px)}
-    .budget-add-bill.budget-edit-popup{position:fixed!important;z-index:90;left:14px;right:14px;top:50%;bottom:auto!important;transform:translateY(-50%);max-height:min(78vh,690px);overflow:auto;border-radius:24px!important;background:#fff!important;box-shadow:0 22px 60px rgba(15,45,58,.32)!important;border:1px solid rgba(15,81,107,.1)!important;padding:20px!important;margin:0!important}
-    .budget-add-bill.budget-edit-popup::before{content:"";display:block;width:44px;height:5px;border-radius:999px;background:#d2dade;margin:0 auto 14px}
-    .budget-add-bill.budget-edit-popup .budget-card-title{font-size:1.42rem;text-align:center;margin-bottom:14px}
+    .budget-edit-backdrop,.edp-backdrop{position:fixed;z-index:89;inset:0;background:rgba(16,35,43,.42);backdrop-filter:blur(2px)}
+    .budget-add-bill.budget-edit-popup,.edp-popup{position:fixed!important;z-index:90;left:14px;right:14px;top:50%;bottom:auto!important;transform:translateY(-50%);max-height:min(78vh,690px);overflow:auto;border-radius:24px!important;background:#fff!important;box-shadow:0 22px 60px rgba(15,45,58,.32)!important;border:1px solid rgba(15,81,107,.1)!important;padding:20px!important;margin:0!important}
+    .budget-add-bill.budget-edit-popup::before,.edp-popup::before{content:"";display:block;width:44px;height:5px;border-radius:999px;background:#d2dade;margin:0 auto 14px}
+    .budget-add-bill.budget-edit-popup .budget-card-title,.edp-title{font-size:1.42rem;text-align:center;margin:0 0 14px;color:#174a61;font-weight:900}
     .budget-add-bill.budget-edit-popup .budget-edit-actions{position:sticky;bottom:0;background:#fff;padding-top:10px}
     .budget-add-bill.budget-edit-popup .budget-edit-actions .btn{min-height:48px}
     .budget-bill-row{cursor:pointer}.budget-bill-row:active{transform:scale(.997)}.budget-bill-amount small{font-weight:850}.budget-note-field textarea{min-height:86px}
+    .edp-card{border:1px solid var(--line,#e1e8ea);border-radius:20px;background:#fff;padding:16px;margin:12px 0;box-shadow:0 1px 0 rgba(15,45,58,.03)}
+    .edp-section-head,.edp-cat-head{display:flex;justify-content:space-between;align-items:center;gap:12px;margin-bottom:8px}.edp-cat-title{font-size:1.14rem;font-weight:900;color:#263137}.edp-cat-total{font-weight:900;color:#58666c}.edp-item-row{width:100%;border:0;background:#fff;display:grid;grid-template-columns:minmax(0,1fr) auto;gap:12px;align-items:center;text-align:left;padding:13px 0;border-bottom:1px solid var(--line,#e5ecee)}.edp-item-row:last-of-type{border-bottom:0}.edp-item-row strong{display:block;color:#263137;font-size:1rem;font-weight:800;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.edp-item-row small{display:block;color:#8a979d;font-size:.78rem;margin-top:3px}.edp-amount{text-align:right;font-size:1.05rem;font-weight:900;color:#263137}.edp-amount small{display:block;color:#0f7893;font-size:.72rem;font-weight:850;margin-top:3px}.edp-add{border:0;background:transparent;color:#0079a8;font-size:1rem;font-weight:800;padding:13px 0 0;text-align:left}.edp-empty{color:#8a979d;font-size:.9rem;line-height:1.35;margin:8px 0}.edp-hidden{display:none!important}.edp-field{display:grid;grid-template-columns:minmax(0,1fr) 148px;gap:12px;align-items:center;padding:12px 0;border-bottom:1px solid var(--line,#e5ecee)}.edp-field span{color:#59666b;font-size:1rem;font-weight:800}.edp-field input,.edp-field select{width:100%;min-height:44px;border:1px solid #dce6e8;border-radius:12px;padding:9px 10px;color:#334449;background:#fff;text-align:right;font-size:16px;font-weight:850}.edp-field select{text-align:left}.edp-note{display:grid;gap:7px;padding:12px 0}.edp-note span{color:#59666b;font-size:1rem;font-weight:800}.edp-note textarea{width:100%;min-height:88px;border:1px solid #dce6e8;border-radius:12px;padding:10px;color:#334449;background:#fff;font-size:16px;font-weight:700;resize:vertical}.edp-actions{display:grid;grid-template-columns:1fr 1fr;gap:9px;position:sticky;bottom:0;background:#fff;padding-top:12px}.edp-actions .danger{grid-column:1 / -1}.edp-actions .btn{min-height:48px}.edp-actions .secondary{background:#eaf9fc;color:#0f7893}.edp-actions .danger{background:#fff0ef;color:#bd4337;border:1px solid #ffd3cf}
   </style>
 </head>
 <body>
@@ -44,7 +46,7 @@
   <script src="utilization-v1.js?v=12"></script>
   <script src="utilization-reference-v3.js?v=15"></script>
   <script src="utilization-detail-fix-v4.js?v=16"></script>
-  <script src="bootstrap-v2.js?v=23" defer></script>
+  <script src="bootstrap-v2.js?v=24" defer></script>
   <script src="strategy-faq-v1.js?v=1" defer></script>
   <script>
     (() => {
@@ -71,6 +73,120 @@
       document.addEventListener('click', () => setTimeout(syncBudgetPopup, 0));
       document.addEventListener('keyup', event => { if (event.key === 'Escape') closeBudgetPopup(); });
       window.addEventListener('load', syncBudgetPopup);
+    })();
+  </script>
+  <script>
+    (() => {
+      const STORE = 'debt-calculator-v2';
+      const incomeTypes = [['paycheck','Paycheck'],['secondPaycheck','Second paycheck'],['sideIncome','Side income'],['otherIncome','Other income']];
+      const categories = [['housing','Housing'],['utilities','Utilities'],['food','Food'],['transportation','Transportation'],['insurance','Insurance'],['subscriptions','Subscriptions'],['savings','Savings'],['giving','Giving'],['personal','Personal'],['other','Other']];
+      const incomeLabels = Object.fromEntries(incomeTypes);
+      const categoryLabels = Object.fromEntries(categories);
+      const esc = value => String(value ?? '').replace(/[&<>"']/g, char => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[char]));
+      const num = value => Number.isFinite(Number.parseFloat(value)) ? Number.parseFloat(value) : 0;
+      const money = value => new Intl.NumberFormat('en-US',{style:'currency',currency:'USD'}).format(num(value));
+      const uid = () => `item-${Date.now().toString(36)}-${Math.random().toString(36).slice(2,8)}`;
+      const monthNames = { january:'01', february:'02', march:'03', april:'04', may:'05', june:'06', july:'07', august:'08', september:'09', october:'10', november:'11', december:'12' };
+      const thisMonth = () => { const date = new Date(); return `${date.getFullYear()}-${String(date.getMonth()+1).padStart(2,'0')}`; };
+      const selectedMonth = () => {
+        const text = document.querySelector('.hero-title')?.textContent?.trim() || '';
+        const match = text.match(/^([A-Za-z]+)\s+(20\d{2})$/);
+        return match && monthNames[match[1].toLowerCase()] ? `${match[2]}-${monthNames[match[1].toLowerCase()]}` : thisMonth();
+      };
+      const load = () => { try { return JSON.parse(localStorage.getItem(STORE)) || {}; } catch { return {}; } };
+      const saveState = state => localStorage.setItem(STORE, JSON.stringify(state));
+      const cleanBills = bills => Array.isArray(bills) ? bills.map(item => ({ id:String(item.id||uid()), name:String(item.name||'').trim(), category:categoryLabels[item.category] ? item.category : 'other', amount:Math.max(0,num(item.amount)), dueDay:Math.max(0,Math.min(31,Math.floor(num(item.dueDay)))), note:String(item.note||'') })).filter(item => item.name && item.amount > .004) : [];
+      function ensureBudget(state) {
+        state.settings = state.settings && typeof state.settings === 'object' ? state.settings : {};
+        state.settings.monthlyBudgets = state.settings.monthlyBudgets && typeof state.settings.monthlyBudgets === 'object' ? state.settings.monthlyBudgets : {};
+        const month = selectedMonth();
+        const budget = state.settings.monthlyBudgets[month] || (state.settings.monthlyBudgets[month] = { incomeSources:{}, budgetCategories:{}, bills:[], schedule:{ buffer:0, income:{}, budget:{} } });
+        budget.incomeSources = budget.incomeSources && typeof budget.incomeSources === 'object' ? budget.incomeSources : {};
+        budget.budgetCategories = budget.budgetCategories && typeof budget.budgetCategories === 'object' ? budget.budgetCategories : {};
+        budget.bills = cleanBills(budget.bills);
+        if (!Array.isArray(budget.incomeItems)) {
+          budget.incomeItems = incomeTypes.map(([key,label]) => ({ id: uid(), name: label, type: key, amount: Math.max(0,num(budget.incomeSources[key])), note: '' })).filter(item => item.amount > .004);
+        }
+        const movedCategories = [];
+        categories.forEach(([key,label]) => {
+          const amount = Math.max(0,num(budget.budgetCategories[key]));
+          if (amount > .004 && !budget.bills.some(item => item.category === key && item.name === label)) movedCategories.push({ id: uid(), name: label, category: key, amount, dueDay: 0, note: '' });
+        });
+        if (movedCategories.length) budget.bills = cleanBills([...budget.bills, ...movedCategories]);
+        syncTotals(state, budget);
+        return { state, budget, month };
+      }
+      function syncTotals(state, budget) {
+        const incomeSources = Object.fromEntries(incomeTypes.map(([key]) => [key, 0]));
+        (budget.incomeItems || []).forEach(item => { const key = incomeLabels[item.type] ? item.type : 'otherIncome'; incomeSources[key] += Math.max(0,num(item.amount)); });
+        budget.incomeSources = incomeSources;
+        budget.budgetCategories = Object.fromEntries(categories.map(([key]) => [key, 0]));
+        budget.bills = cleanBills(budget.bills);
+        state.settings.incomeSources = incomeSources;
+        state.settings.budgetCategories = budget.budgetCategories;
+        state.settings.budgetBills = budget.bills;
+      }
+      const sectionByTitle = title => [...document.querySelectorAll('.section')].find(section => (section.querySelector('.section-title')?.textContent || '').trim().startsWith(title));
+      const hiddenInputs = (prefix, values) => Object.entries(values).map(([key,value]) => `<input type="hidden" name="${prefix}-${key}" value="${num(value)}">`).join('');
+      const itemRow = (item, kind) => `<button type="button" class="edp-item-row" data-edp-act="edit" data-kind="${kind}" data-id="${esc(item.id)}"><span><strong>${esc(item.name)}</strong><small>${kind === 'income' ? incomeLabels[item.type] || 'Income' : `${categoryLabels[item.category] || 'Other'}${item.dueDay ? ` · Due ${item.dueDay}` : ''}`}${item.note ? ` · ${esc(item.note)}` : ''}</small></span><span class="edp-amount">${money(item.amount)}<small>Edit ›</small></span></button>`;
+      function renderEnhancements() {
+        const budgetForm = document.getElementById('budget-form');
+        if (!budgetForm || !document.querySelector('.tab-btn.active[data-page="budget"]')) return;
+        const { state, budget } = ensureBudget(load());
+        saveState(state);
+        const incomeSection = sectionByTitle('Income');
+        if (incomeSection && !incomeSection.dataset.edpPatched) {
+          incomeSection.dataset.edpPatched = '1';
+          incomeSection.querySelector('.budget-section-total')?.replaceChildren(document.createTextNode(money((budget.incomeItems || []).reduce((sum,item)=>sum+num(item.amount),0))));
+          const card = incomeSection.querySelector('.budget-card');
+          if (card) card.innerHTML = `${hiddenInputs('income', budget.incomeSources)}${(budget.incomeItems || []).length ? budget.incomeItems.map(item => itemRow(item,'income')).join('') : '<p class="edp-empty">Add paychecks, side income, or other money coming in.</p>'}<button type="button" class="edp-add" data-edp-act="add" data-kind="income">Add income</button>`;
+        }
+        const assignedSection = sectionByTitle('Assigned categories');
+        if (assignedSection && !assignedSection.dataset.edpPatched) {
+          assignedSection.dataset.edpPatched = '1';
+          const categoryCards = categories.map(([key,label]) => {
+            const items = budget.bills.filter(item => item.category === key);
+            const total = items.reduce((sum,item)=>sum+num(item.amount),0);
+            return `<article class="edp-card"><div class="edp-cat-head"><span class="edp-cat-title">${label}</span><span class="edp-cat-total">${money(total)}</span></div>${items.length ? items.map(item => itemRow(item,'expense')).join('') : '<p class="edp-empty">No items yet.</p>'}<button type="button" class="edp-add" data-edp-act="add" data-kind="expense" data-category="${key}">Add item</button></article>`;
+          }).join('');
+          assignedSection.innerHTML = `<div class="section-head"><h2 class="section-title" style="margin:0">Assigned categories</h2><span class="budget-section-total">${money(budget.bills.reduce((sum,item)=>sum+num(item.amount),0))}</span></div>${hiddenInputs('budget', budget.budgetCategories)}${categoryCards}`;
+        }
+        const billsSection = sectionByTitle('Bills');
+        if (billsSection) billsSection.classList.add('edp-hidden');
+      }
+      function openPopup(kind, id = '', category = '') {
+        const { state, budget } = ensureBudget(load());
+        const isIncome = kind === 'income';
+        const items = isIncome ? (budget.incomeItems || []) : budget.bills;
+        const item = items.find(entry => entry.id === id) || { id:'', name:'', amount:'', type:'paycheck', category: category || 'housing', dueDay:'', note:'' };
+        const typeOptions = (isIncome ? incomeTypes : categories).map(([key,label]) => `<option value="${key}" ${(isIncome ? item.type : item.category) === key ? 'selected' : ''}>${label}</option>`).join('');
+        const backdrop = document.createElement('button');
+        backdrop.type = 'button'; backdrop.className = 'edp-backdrop'; backdrop.setAttribute('aria-label','Close editor');
+        const popup = document.createElement('section');
+        popup.className = 'edp-popup';
+        popup.innerHTML = `<h3 class="edp-title">${id ? 'Edit' : 'Add'} ${isIncome ? 'income' : 'item'}</h3><label class="edp-field"><span>Name</span><input id="edp-name" value="${esc(item.name)}" placeholder="${isIncome ? 'Paycheck' : 'Rent'}"></label><label class="edp-field"><span>${isIncome ? 'Income type' : 'Category'}</span><select id="edp-type">${typeOptions}</select></label><label class="edp-field"><span>Amount</span><input id="edp-amount" type="number" min="0" step="0.01" inputmode="decimal" value="${num(item.amount) || ''}" placeholder="0.00"></label>${isIncome ? '' : `<label class="edp-field"><span>Due day</span><input id="edp-due" type="number" min="1" max="31" step="1" inputmode="numeric" value="${num(item.dueDay) || ''}" placeholder="24"></label>`}<label class="edp-note"><span>Notes</span><textarea id="edp-note" placeholder="Optional note">${esc(item.note || '')}</textarea></label><div class="edp-actions"><button type="button" class="btn" data-edp-save>Save</button><button type="button" class="btn secondary" data-edp-close>Cancel</button>${id ? '<button type="button" class="btn danger" data-edp-delete>Delete</button>' : ''}</div>`;
+        const close = () => { backdrop.remove(); popup.remove(); };
+        backdrop.addEventListener('click', close); popup.querySelector('[data-edp-close]').addEventListener('click', close);
+        popup.querySelector('[data-edp-save]').addEventListener('click', () => {
+          const name = document.getElementById('edp-name').value.trim(); const amount = Math.max(0,num(document.getElementById('edp-amount').value));
+          if (!name || amount <= .004) return;
+          const next = { id: id || uid(), name, amount, note: document.getElementById('edp-note').value.trim() };
+          if (isIncome) { next.type = document.getElementById('edp-type').value; budget.incomeItems = [...(budget.incomeItems || []).filter(entry => entry.id !== next.id), next]; }
+          else { next.category = document.getElementById('edp-type').value; next.dueDay = Math.max(0,Math.min(31,Math.floor(num(document.getElementById('edp-due').value)))); budget.bills = cleanBills([...(budget.bills || []).filter(entry => entry.id !== next.id), next]); }
+          syncTotals(state,budget); saveState(state); location.reload();
+        });
+        popup.querySelector('[data-edp-delete]')?.addEventListener('click', () => { if (isIncome) budget.incomeItems = (budget.incomeItems || []).filter(entry => entry.id !== id); else budget.bills = cleanBills(budget.bills).filter(entry => entry.id !== id); syncTotals(state,budget); saveState(state); location.reload(); });
+        document.body.append(backdrop,popup);
+      }
+      document.addEventListener('click', event => {
+        const button = event.target.closest('[data-edp-act]');
+        if (!button) return;
+        event.preventDefault(); event.stopPropagation();
+        openPopup(button.dataset.kind, button.dataset.id || '', button.dataset.category || '');
+      }, true);
+      new MutationObserver(() => setTimeout(renderEnhancements, 0)).observe(document.body, { childList:true, subtree:true });
+      window.addEventListener('load', () => setTimeout(renderEnhancements, 500));
+      document.addEventListener('click', () => setTimeout(renderEnhancements, 0));
     })();
   </script>
 </body>
