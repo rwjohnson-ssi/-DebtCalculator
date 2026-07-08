@@ -5,6 +5,7 @@
   if (!root) return;
 
   const STORE = "debt-calculator-v2";
+  const RETURN_PAGE = "debtwizard-return-page";
   const incomeTypes = [["paycheck", "Paycheck"], ["secondPaycheck", "Second paycheck"], ["sideIncome", "Side income"], ["otherIncome", "Other income"]];
   const incomeLabels = Object.fromEntries(incomeTypes);
   const monthNames = { january:"01", february:"02", march:"03", april:"04", may:"05", june:"06", july:"07", august:"08", september:"09", october:"10", november:"11", december:"12" };
@@ -109,6 +110,25 @@
       .edp-pay-suggest:active { transform: scale(.98); }
     `;
     document.head.appendChild(style);
+  }
+
+  function rememberBudgetReturn() {
+    if (document.getElementById("budget-form") || document.querySelector('.tab-btn.active[data-page="budget"]') || document.querySelector(".edp-popup")) {
+      sessionStorage.setItem(RETURN_PAGE, "budget");
+    }
+  }
+
+  function restoreBudgetReturn() {
+    if (sessionStorage.getItem(RETURN_PAGE) !== "budget") return;
+    const activeBudget = document.querySelector('.tab-btn.active[data-page="budget"]') || document.getElementById("budget-form");
+    if (activeBudget) {
+      sessionStorage.removeItem(RETURN_PAGE);
+      return;
+    }
+    const budgetTab = document.querySelector('.tab-btn[data-page="budget"], [data-act="nav"][data-page="budget"]');
+    if (!budgetTab) return;
+    sessionStorage.removeItem(RETURN_PAGE);
+    budgetTab.click();
   }
 
   function getState() {
@@ -275,6 +295,7 @@
 
     popup.querySelector("[data-edp-save]")?.addEventListener("click", event => {
       if (!title.includes("income")) return;
+      rememberBudgetReturn();
       event.preventDefault();
       event.stopImmediatePropagation();
       const state = getState();
@@ -299,12 +320,23 @@
     }, true);
   }
 
+  document.addEventListener("click", event => {
+    if (event.target.closest('.edp-popup [data-edp-save], .edp-popup [data-edp-delete], .edp-popup [data-edp-close], .edp-backdrop, [data-act="add-budget-bill"], [data-act="save-budget-bill"], [data-act="delete-budget-bill"], [data-act="close-budget-bill"]')) rememberBudgetReturn();
+  }, true);
+
+  window.addEventListener("load", () => {
+    setTimeout(restoreBudgetReturn, 150);
+    setTimeout(restoreBudgetReturn, 700);
+    setTimeout(restoreBudgetReturn, 1300);
+  });
+
   function apply() {
     addStyles();
     const form = root.querySelector("#paycheck-form");
     const pair = form?.querySelector(".paycheck-two");
     if (pair) pair.classList.add("paycheck-fields-stacked-mobile");
     patchIncomePopup();
+    restoreBudgetReturn();
   }
 
   new MutationObserver(apply).observe(root, { childList: true, subtree: true });
