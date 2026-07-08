@@ -13,7 +13,13 @@
   <link rel="stylesheet" href="debt-entry-compact-v1.css?v=1">
   <link rel="stylesheet" href="strategy-faq-v1.css?v=1">
   <style>
-    .budget-add-bill:has(.budget-edit-actions){position:fixed;z-index:90;left:12px;right:12px;bottom:calc(86px + env(safe-area-inset-bottom,0px));max-height:72vh;overflow:auto;border-radius:24px;background:#fff;box-shadow:0 18px 48px rgba(15,45,58,.24);border:1px solid rgba(15,81,107,.1);padding:20px!important}.budget-add-bill:has(.budget-edit-actions)::before{content:"";display:block;width:44px;height:5px;border-radius:999px;background:#d2dade;margin:0 auto 14px}.budget-add-bill:has(.budget-edit-actions) .budget-card-title{font-size:1.42rem;text-align:center;margin-bottom:14px}.budget-bill-row{cursor:pointer}.budget-bill-row:active{transform:scale(.997)}.budget-bill-amount small{font-weight:850}.budget-edit-actions{position:sticky;bottom:0;background:#fff;padding-top:10px}.budget-edit-actions .btn{min-height:48px}.budget-note-field textarea{min-height:86px}
+    .budget-edit-backdrop{position:fixed;z-index:89;inset:0;background:rgba(16,35,43,.42);backdrop-filter:blur(2px)}
+    .budget-add-bill.budget-edit-popup{position:fixed!important;z-index:90;left:14px;right:14px;top:50%;bottom:auto!important;transform:translateY(-50%);max-height:min(78vh,690px);overflow:auto;border-radius:24px!important;background:#fff!important;box-shadow:0 22px 60px rgba(15,45,58,.32)!important;border:1px solid rgba(15,81,107,.1)!important;padding:20px!important;margin:0!important}
+    .budget-add-bill.budget-edit-popup::before{content:"";display:block;width:44px;height:5px;border-radius:999px;background:#d2dade;margin:0 auto 14px}
+    .budget-add-bill.budget-edit-popup .budget-card-title{font-size:1.42rem;text-align:center;margin-bottom:14px}
+    .budget-add-bill.budget-edit-popup .budget-edit-actions{position:sticky;bottom:0;background:#fff;padding-top:10px}
+    .budget-add-bill.budget-edit-popup .budget-edit-actions .btn{min-height:48px}
+    .budget-bill-row{cursor:pointer}.budget-bill-row:active{transform:scale(.997)}.budget-bill-amount small{font-weight:850}.budget-note-field textarea{min-height:86px}
   </style>
 </head>
 <body>
@@ -38,7 +44,34 @@
   <script src="utilization-v1.js?v=12"></script>
   <script src="utilization-reference-v3.js?v=15"></script>
   <script src="utilization-detail-fix-v4.js?v=16"></script>
-  <script src="bootstrap-v2.js?v=22" defer></script>
+  <script src="bootstrap-v2.js?v=23" defer></script>
   <script src="strategy-faq-v1.js?v=1" defer></script>
+  <script>
+    (() => {
+      const closeBudgetPopup = () => document.querySelector('.budget-add-bill.budget-edit-popup [data-act="close-budget-bill"]')?.click();
+      const syncBudgetPopup = () => {
+        const editor = [...document.querySelectorAll('.budget-add-bill')].find(card => card.querySelector('.budget-edit-actions'));
+        document.querySelectorAll('.budget-add-bill.budget-edit-popup').forEach(card => { if (card !== editor) card.classList.remove('budget-edit-popup'); });
+        let backdrop = document.querySelector('.budget-edit-backdrop');
+        if (editor) {
+          editor.classList.add('budget-edit-popup');
+          if (!backdrop) {
+            backdrop = document.createElement('button');
+            backdrop.type = 'button';
+            backdrop.className = 'budget-edit-backdrop';
+            backdrop.setAttribute('aria-label', 'Close budget item editor');
+            backdrop.addEventListener('click', closeBudgetPopup);
+            document.body.appendChild(backdrop);
+          }
+        } else if (backdrop) {
+          backdrop.remove();
+        }
+      };
+      new MutationObserver(syncBudgetPopup).observe(document.body, { childList: true, subtree: true });
+      document.addEventListener('click', () => setTimeout(syncBudgetPopup, 0));
+      document.addEventListener('keyup', event => { if (event.key === 'Escape') closeBudgetPopup(); });
+      window.addEventListener('load', syncBudgetPopup);
+    })();
+  </script>
 </body>
 </html>
