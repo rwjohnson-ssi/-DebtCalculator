@@ -3,13 +3,29 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta http-equiv="Cache-Control" content="no-store, no-cache, must-revalidate">
+  <meta http-equiv="Pragma" content="no-cache">
+  <meta http-equiv="Expires" content="0">
   <title>DebtWizard</title>
-  <script>
-    location.replace(`mobile.html?v=31&strategyStyle=1${location.search ? '&' + location.search.slice(1) : ''}`);
-  </script>
 </head>
 <body>
-  <p>Opening <a id="app-link" href="mobile.html?v=31&strategyStyle=1">DebtWizard</a>…</p>
-  <script>document.getElementById("app-link").href = `mobile.html?v=31&strategyStyle=1${location.search ? '&' + location.search.slice(1) : ''}`;</script>
+  <p id="loading" style="font-family:-apple-system,BlinkMacSystemFont,Segoe UI,sans-serif;padding:40px 22px;color:#174a61">Opening DebtWizard…</p>
+  <script>
+    (async () => {
+      try {
+        const extra = location.search ? '&' + location.search.slice(1) : '';
+        const response = await fetch(`mobile.html?v=31&runtime=${Date.now()}&strategyStyle=1${extra}`, { cache: 'no-store' });
+        if (!response.ok) throw new Error('Unable to load mobile app shell.');
+        let html = await response.text();
+        html = html.replace(/paycheck-form-overlap-fix-v4\.js\?v=\d+/g, 'paycheck-form-overlap-fix-v4.js?v=23');
+        document.open();
+        document.write(html);
+        document.close();
+      } catch (error) {
+        console.error(error);
+        document.getElementById('loading').innerHTML = 'DebtWizard needs a refresh. Please reload this page once.';
+      }
+    })();
+  </script>
 </body>
 </html>
