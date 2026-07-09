@@ -14,10 +14,10 @@
     (async () => {
       try {
         const extra = location.search ? '&' + location.search.slice(1) : '';
-        const response = await fetch(`mobile.html?v=49&runtime=${Date.now()}&strategyStyle=1${extra}`, { cache: 'no-store' });
+        const response = await fetch(`mobile.html?v=50&runtime=${Date.now()}&strategyStyle=1${extra}`, { cache: 'no-store' });
         if (!response.ok) throw new Error('Unable to load mobile app shell.');
         let html = await response.text();
-        html = html.replace(/paycheck-form-overlap-fix-v4\.js\?v=\d+/g, 'paycheck-form-overlap-fix-v4.js?v=40');
+        html = html.replace(/paycheck-form-overlap-fix-v4\.js\?v=\d+/g, 'paycheck-form-overlap-fix-v4.js?v=41');
         html = html.replace('</body>', `<script>
           (() => {
             const STORE = 'debt-calculator-v2';
@@ -240,28 +240,42 @@
               location.reload();
             }
             function patchTransactionNav() {
-              const button = document.querySelector('.tab-btn[data-page="track"]');
-              if (!button || button.dataset.txLabel === '1') return;
-              button.dataset.txLabel = '1';
-              const icon = button.querySelector('.tab-icon');
-              if (icon) icon.textContent = '$';
-              const label = button.querySelector('span:last-child');
-              if (label) label.textContent = 'Transactions';
+              const bar = document.getElementById('tabbar');
+              if (!bar) return;
+              const track = bar.querySelector('.tab-btn[data-page="track"]');
+              if (track && track.dataset.trackLabelFixed !== '1') {
+                track.dataset.trackLabelFixed = '1';
+                const label = track.querySelector('span:last-child');
+                if (label) label.textContent = 'Track';
+              }
+              if (bar.querySelector('[data-edp-trans-nav]')) return;
+              bar.insertAdjacentHTML('beforeend', '<button class="tab-btn" data-edp-trans-nav type="button"><span class="tab-icon">$</span><span>Transactions</span></button>');
+            }
+            function setTransactionNavActive(active) {
+              document.querySelectorAll('#tabbar .tab-btn').forEach(button => button.classList.remove('active'));
+              const custom = document.querySelector('[data-edp-trans-nav]');
+              if (custom) custom.classList.toggle('active', Boolean(active));
             }
             function transactionRows(transactions) {
               return transactions.map(item => '<div class="dw-tx-row"><span class="dw-date-dot"><span><small>' + esc(dayLabel(item.date).split(' ')[0]) + '</small>' + esc(dayLabel(item.date).split(' ')[1] || '') + '</span></span><span><div class="dw-tx-name">' + esc(item.merchant || item.source || 'Transaction') + '</div><div class="dw-tx-cat">' + esc(item.budgetItemName || item.category || 'Unassigned') + '</div></span><span class="dw-tx-amount">' + (item.type === 'income' ? '' : '-') + money(Math.max(0, number(item.amount))) + '</span></div>').join('');
             }
             function patchTransactionsPage() {
               patchTransactionNav();
-              if (!document.querySelector('.tab-btn.active[data-page="track"]')) return;
+              if (document.body.dataset.debtwizardPage !== 'transactions') return;
               const screen = document.getElementById('screen');
-              if (!screen || screen.dataset.transactionsShell === '1') return;
+              if (!screen || screen.dataset.transactionsShell === '1') { setTransactionNavActive(true); return; }
               const state = loadState();
               const info = budgetFor(state);
               saveState(state);
               const tx = [...info.budget.transactions].sort((a, b) => String(b.date || '').localeCompare(String(a.date || '')));
               screen.dataset.transactionsShell = '1';
               screen.innerHTML = '<section class="dw-trans-page"><header class="dw-trans-hero"><div class="dw-trans-top"><span></span><div class="dw-trans-title">Transactions</div><div class="dw-trans-select">Select</div></div><label class="dw-trans-search"><span>⌕</span><input type="search" placeholder="Search" disabled></label></header><main class="dw-trans-wrap"><article class="dw-trans-card dw-deleted-row"><span class="dw-trash">♲</span><span>Deleted</span><span class="dw-chev">›</span></article>' + (tx.length ? '<article class="dw-trans-card"><div class="dw-month-title">' + esc(monthLabel(info.month)) + '</div>' + transactionRows(tx) + '</article>' : '<section class="dw-trans-empty"><div class="dw-trans-illus">💸</div><h2>Time to track your first transaction</h2><p>Now that your budget is set up, think of the last thing you spent money on, and let’s track it.</p><button type="button" class="dw-first-btn" data-edp-trans-add>Track My First Transaction</button></section>') + '</main><button type="button" class="dw-trans-fab" data-edp-trans-add aria-label="Add transaction">+</button></section>';
+              setTransactionNavActive(true);
+            }
+            function clearTransactionPage() {
+              if (document.body.dataset.debtwizardPage === 'transactions') document.body.dataset.debtwizardPage = '';
+              const screen = document.getElementById('screen');
+              if (screen) screen.dataset.transactionsShell = '';
             }
             function apply() {
               addStyle();
@@ -281,6 +295,16 @@
               patchTrackingField();
             }
             document.addEventListener('click', event => {
+              const transactionTab = event.target.closest('[data-edp-trans-nav]');
+              if (transactionTab) {
+                event.preventDefault();
+                event.stopPropagation();
+                document.body.dataset.debtwizardPage = 'transactions';
+                const screen = document.getElementById('screen');
+                if (screen) screen.dataset.transactionsShell = '';
+                patchTransactionsPage();
+                return;
+              }
               const editButton = event.target.closest('[data-edp-act]');
               if (editButton) {
                 activeEdit = { kind: editButton.dataset.kind || '', id: editButton.dataset.id || '', category: editButton.dataset.category || '' };
@@ -299,7 +323,7 @@
               if (txButton) { event.preventDefault(); alert('Add Transaction popup is the next update.'); return; }
               const button = event.target.closest('[data-budget-view]');
               if (button) { event.preventDefault(); save(button.dataset.budgetView); apply(); return; }
-              if (event.target.closest('[data-act="nav"], .tab-btn, [data-act^="budget-month"]')) { const screen = document.getElementById('screen'); if (screen) screen.dataset.transactionsShell = ''; setTimeout(apply, 80); }
+              if (event.target.closest('[data-act="nav"], .tab-btn:not([data-edp-trans-nav]), [data-act^="budget-month"]')) { clearTransactionPage(); setTimeout(apply, 80); }
             }, true);
             const screen = document.getElementById('screen');
             if (screen) new MutationObserver(() => setTimeout(apply, 0)).observe(screen, { childList: true, subtree: true });
