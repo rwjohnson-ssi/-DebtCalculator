@@ -14,10 +14,10 @@
     (async () => {
       try {
         const extra = location.search ? '&' + location.search.slice(1) : '';
-        const response = await fetch(`mobile.html?v=37&runtime=${Date.now()}&strategyStyle=1${extra}`, { cache: 'no-store' });
+        const response = await fetch(`mobile.html?v=38&runtime=${Date.now()}&strategyStyle=1${extra}`, { cache: 'no-store' });
         if (!response.ok) throw new Error('Unable to load mobile app shell.');
         let html = await response.text();
-        html = html.replace(/paycheck-form-overlap-fix-v4\.js\?v=\d+/g, 'paycheck-form-overlap-fix-v4.js?v=28');
+        html = html.replace(/paycheck-form-overlap-fix-v4\.js\?v=\d+/g, 'paycheck-form-overlap-fix-v4.js?v=29');
         html = html.replace('</body>', `<script>
           (() => {
             const KEY = 'debtwizard-budget-mode';
@@ -33,6 +33,28 @@
               if (active === 'remaining') return 'Remaining view selected. Section labels updated; row values come next.';
               return 'Planned view selected. Section labels updated; row values come next.';
             }
+            function setHeaderLabel(scope, active, title) {
+              if (!scope) return;
+              const text = label(active, title);
+              const target = scope.querySelector('.budget-section-total, .edp-cat-total');
+              if (target) { target.textContent = text; return; }
+              const head = scope.querySelector('.section-head, .edp-cat-head') || scope.firstElementChild;
+              if (!head) return;
+              const candidates = [...head.querySelectorAll('span,strong,div')].filter(item => /\$|Planned|Spent|Remaining|Received/.test(item.textContent || ''));
+              const fallback = candidates[candidates.length - 1];
+              if (fallback) fallback.textContent = text;
+            }
+            function updateLabels(active) {
+              document.querySelectorAll('.section').forEach(section => {
+                const title = section.querySelector('.section-title')?.textContent?.trim() || '';
+                if (/^(Income|Assigned categories|Bills)/.test(title)) setHeaderLabel(section, active, title);
+              });
+              document.querySelectorAll('.edp-card').forEach(card => setHeaderLabel(card, active, card.querySelector('.edp-cat-title')?.textContent || ''));
+              document.querySelectorAll('h2,.section-title').forEach(titleNode => {
+                const title = titleNode.textContent?.trim() || '';
+                if (/^(Income|Assigned categories|Bills)$/.test(title)) setHeaderLabel(titleNode.closest('.section') || titleNode.parentElement, active, title);
+              });
+            }
             function apply() {
               const form = document.getElementById('budget-form');
               if (!form) return;
@@ -41,15 +63,7 @@
               form.querySelectorAll('[data-budget-view]').forEach(button => button.classList.toggle('active', button.dataset.budgetView === active));
               const note = form.querySelector('.budget-view-note');
               if (note) note.textContent = noteText(active);
-              document.querySelectorAll('.section').forEach(section => {
-                const title = section.querySelector('.section-title')?.textContent?.trim() || '';
-                const right = section.querySelector('.budget-section-total');
-                if (right && /^(Income|Assigned categories|Bills)/.test(title)) right.textContent = label(active, title);
-              });
-              document.querySelectorAll('.edp-card').forEach(card => {
-                const right = card.querySelector('.edp-cat-total');
-                if (right) right.textContent = label(active, card.querySelector('.edp-cat-title')?.textContent || '');
-              });
+              updateLabels(active);
             }
             document.addEventListener('click', event => {
               const button = event.target.closest('[data-budget-view]');
