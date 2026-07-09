@@ -14,10 +14,10 @@
     (async () => {
       try {
         const extra = location.search ? '&' + location.search.slice(1) : '';
-        const response = await fetch(`mobile.html?v=45&runtime=${Date.now()}&strategyStyle=1${extra}`, { cache: 'no-store' });
+        const response = await fetch(`mobile.html?v=46&runtime=${Date.now()}&strategyStyle=1${extra}`, { cache: 'no-store' });
         if (!response.ok) throw new Error('Unable to load mobile app shell.');
         let html = await response.text();
-        html = html.replace(/paycheck-form-overlap-fix-v4\.js\?v=\d+/g, 'paycheck-form-overlap-fix-v4.js?v=36');
+        html = html.replace(/paycheck-form-overlap-fix-v4\.js\?v=\d+/g, 'paycheck-form-overlap-fix-v4.js?v=37');
         html = html.replace('</body>', `<script>
           (() => {
             const KEY = 'debtwizard-budget-mode';
@@ -40,7 +40,7 @@
               if (document.getElementById('budget-row-bar-style')) return;
               const style = document.createElement('style');
               style.id = 'budget-row-bar-style';
-              style.textContent = '.budget-income-bar,.budget-assigned-bar{display:block;width:100%;height:8px;border-radius:999px;background:#edf1f2;overflow:hidden;margin-top:10px}.budget-income-fill,.budget-assigned-fill{display:block;height:100%;border-radius:inherit;background:#0f516b;width:0%;transition:width .18s ease}.budget-income-fill.spent,.budget-assigned-fill.spent{background:#20bfd7}.budget-income-fill.planned,.budget-assigned-fill.planned{background:#c9d3d7}.budget-income-fill.remaining,.budget-assigned-fill.remaining{background:#0f516b}';
+              style.textContent = '.budget-income-bar,.budget-assigned-bar{display:block;width:100%;height:10px;border-radius:999px;background:#d9e3e7;overflow:hidden;margin-top:12px}.budget-income-fill,.budget-assigned-fill{display:block;height:100%;border-radius:inherit;background:#0f516b;width:0%;transition:width .18s ease}.budget-income-fill.spent,.budget-assigned-fill.spent{background:#20bfd7}.budget-income-fill.planned,.budget-assigned-fill.planned{background:#0f7893}.budget-income-fill.remaining,.budget-assigned-fill.remaining{background:#0f516b}';
               document.head.appendChild(style);
             }
             function setHeaderLabel(scope, active, title) {
