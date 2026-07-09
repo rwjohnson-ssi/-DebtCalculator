@@ -14,26 +14,77 @@
     (async () => {
       try {
         const extra = location.search ? '&' + location.search.slice(1) : '';
-        const response = await fetch(`mobile.html?v=46&runtime=${Date.now()}&strategyStyle=1${extra}`, { cache: 'no-store' });
+        const response = await fetch(`mobile.html?v=47&runtime=${Date.now()}&strategyStyle=1${extra}`, { cache: 'no-store' });
         if (!response.ok) throw new Error('Unable to load mobile app shell.');
         let html = await response.text();
-        html = html.replace(/paycheck-form-overlap-fix-v4\.js\?v=\d+/g, 'paycheck-form-overlap-fix-v4.js?v=37');
+        html = html.replace(/paycheck-form-overlap-fix-v4\.js\?v=\d+/g, 'paycheck-form-overlap-fix-v4.js?v=38');
         html = html.replace('</body>', `<script>
           (() => {
+            const STORE = 'debt-calculator-v2';
             const KEY = 'debtwizard-budget-mode';
             const modes = ['planned','spent','remaining'];
+            const incomeTypes = [['paycheck','Paycheck'],['secondPaycheck','Second paycheck'],['sideIncome','Side income'],['otherIncome','Other income']];
+            const categories = [['housing','Housing'],['utilities','Utilities'],['food','Food'],['transportation','Transportation'],['insurance','Insurance'],['subscriptions','Subscriptions'],['savings','Savings'],['giving','Giving'],['personal','Personal'],['other','Other']];
+            const incomeLabels = Object.fromEntries(incomeTypes);
+            const categoryLabels = Object.fromEntries(categories);
+            let activeEdit = { kind: '', id: '', category: '' };
             const money = value => new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(Number.isFinite(value) ? value : 0);
             const number = value => Number.isFinite(Number.parseFloat(value)) ? Number.parseFloat(value) : 0;
             const parseMoney = value => number(String(value || '').replace(/[^0-9.-]/g, ''));
+            function uid() { return 'item-' + Date.now().toString(36) + '-' + Math.random().toString(36).slice(2, 8); }
             function mode() {
               try { const value = localStorage.getItem(KEY) || 'planned'; return modes.includes(value) ? value : 'planned'; }
               catch { return 'planned'; }
             }
             function save(value) { try { localStorage.setItem(KEY, modes.includes(value) ? value : 'planned'); } catch {} }
+            function loadState() { try { return JSON.parse(localStorage.getItem(STORE)) || {}; } catch { return {}; } }
+            function saveState(state) { localStorage.setItem(STORE, JSON.stringify(state)); }
+            function currentMonth() {
+              const text = document.querySelector('.hero-title')?.textContent?.trim() || '';
+              const months = {january:'01',february:'02',march:'03',april:'04',may:'05',june:'06',july:'07',august:'08',september:'09',october:'10',november:'11',december:'12'};
+              const match = text.match(/^([A-Za-z]+)\s+(20\d{2})$/);
+              if (match && months[match[1].toLowerCase()]) return match[2] + '-' + months[match[1].toLowerCase()];
+              const date = new Date();
+              return date.getFullYear() + '-' + String(date.getMonth() + 1).padStart(2, '0');
+            }
+            function budgetFor(state) {
+              state.settings = state.settings && typeof state.settings === 'object' ? state.settings : {};
+              state.settings.monthlyBudgets = state.settings.monthlyBudgets && typeof state.settings.monthlyBudgets === 'object' ? state.settings.monthlyBudgets : {};
+              const month = currentMonth();
+              const budget = state.settings.monthlyBudgets[month] || (state.settings.monthlyBudgets[month] = { incomeSources: {}, budgetCategories: {}, bills: [], schedule: { buffer: 0, income: {}, budget: {} } });
+              budget.incomeItems = Array.isArray(budget.incomeItems) ? budget.incomeItems : [];
+              budget.bills = Array.isArray(budget.bills) ? budget.bills : [];
+              state.settings.budgetTracking = state.settings.budgetTracking && typeof state.settings.budgetTracking === 'object' ? state.settings.budgetTracking : {};
+              state.settings.budgetTracking[month] = state.settings.budgetTracking[month] && typeof state.settings.budgetTracking[month] === 'object' ? state.settings.budgetTracking[month] : {};
+              return { month, budget, tracking: state.settings.budgetTracking[month] };
+            }
+            function trackingValue(kind, id) {
+              if (!id) return 0;
+              const state = loadState();
+              const info = budgetFor(state);
+              return Math.max(0, number(info.tracking[(kind === 'income' ? 'income:' : 'expense:') + id]));
+            }
+            function setTrackingValue(state, month, kind, id, value) {
+              state.settings.budgetTracking = state.settings.budgetTracking && typeof state.settings.budgetTracking === 'object' ? state.settings.budgetTracking : {};
+              state.settings.budgetTracking[month] = state.settings.budgetTracking[month] && typeof state.settings.budgetTracking[month] === 'object' ? state.settings.budgetTracking[month] : {};
+              state.settings.budgetTracking[month][(kind === 'income' ? 'income:' : 'expense:') + id] = Math.max(0, number(value));
+            }
+            function syncBudgetTotals(state, budget) {
+              const incomeSources = Object.fromEntries(incomeTypes.map(([key]) => [key, 0]));
+              budget.incomeItems.forEach(item => { const key = incomeLabels[item.type] ? item.type : 'otherIncome'; incomeSources[key] += Math.max(0, number(item.amount)); });
+              budget.incomeSources = incomeSources;
+              budget.budgetCategories = Object.fromEntries(categories.map(([key]) => [key, 0]));
+              budget.schedule = budget.schedule && typeof budget.schedule === 'object' ? budget.schedule : { buffer: 0, income: {}, budget: {} };
+              budget.schedule.income = Object.fromEntries(incomeTypes.map(([key]) => [key, budget.incomeItems.filter(item => item.type === key && number(item.payDay) > 0).map(item => item.payDay).join(', ')]));
+              state.settings.incomeSources = incomeSources;
+              state.settings.budgetCategories = budget.budgetCategories;
+              state.settings.budgetBills = budget.bills;
+              state.settings.budgetSchedule = budget.schedule;
+            }
             function label(active, title) { return /income/i.test(title || '') ? (active === 'spent' ? 'Received' : active === 'remaining' ? 'Remaining' : 'Planned') : (active === 'spent' ? 'Spent' : active === 'remaining' ? 'Remaining' : 'Planned'); }
             function noteText(active) {
-              if (active === 'spent') return 'Spent view selected. Bars show tracked progress.';
-              if (active === 'remaining') return 'Remaining view selected. Bars show money left in each row.';
+              if (active === 'spent') return 'Spent view selected. Edit a row to enter actual spent or received.';
+              if (active === 'remaining') return 'Remaining view selected. Rows show planned minus actual tracked.';
               return 'Planned view selected. Bars show planned amounts.';
             }
             function addStyle() {
@@ -72,20 +123,18 @@
               if (!row.dataset.incomePlanned) {
                 const amountNode = row.querySelector('.edp-amount,.budget-bill-amount');
                 row.dataset.incomePlanned = String(parseMoney(amountNode?.childNodes?.[0]?.textContent || amountNode?.textContent || '0'));
-                row.dataset.incomeReceived = String(parseMoney(row.dataset.received || '0'));
               }
               const planned = Math.max(0, number(row.dataset.incomePlanned));
-              const received = Math.max(0, number(row.dataset.incomeReceived));
+              const received = Math.min(planned, trackingValue('income', row.dataset.id));
               return { planned, spent: received, remaining: Math.max(0, planned - received) };
             }
             function expenseValues(row) {
               if (!row.dataset.expensePlanned) {
                 const amountNode = row.querySelector('.edp-amount,.budget-bill-amount');
                 row.dataset.expensePlanned = String(parseMoney(amountNode?.childNodes?.[0]?.textContent || amountNode?.textContent || '0'));
-                row.dataset.expenseSpent = String(parseMoney(row.dataset.spent || '0'));
               }
               const planned = Math.max(0, number(row.dataset.expensePlanned));
-              const spent = Math.max(0, number(row.dataset.expenseSpent));
+              const spent = Math.min(planned, trackingValue('expense', row.dataset.id));
               return { planned, spent, remaining: Math.max(0, planned - spent) };
             }
             function barWidth(values, active) {
@@ -125,6 +174,41 @@
                 if (fill) { fill.className = 'budget-assigned-fill ' + active; fill.style.width = barWidth(values, active); }
               });
             }
+            function patchTrackingField() {
+              const popup = document.querySelector('.edp-popup');
+              if (!popup || popup.querySelector('#edp-tracked')) return;
+              const isIncome = activeEdit.kind === 'income' || /income/i.test(popup.querySelector('.edp-title')?.textContent || '');
+              const labelText = isIncome ? 'Received' : 'Spent';
+              const value = trackingValue(isIncome ? 'income' : 'expense', activeEdit.id || '');
+              const amountField = popup.querySelector('#edp-amount')?.closest('.edp-field');
+              if (!amountField) return;
+              amountField.insertAdjacentHTML('afterend', '<label class="edp-field" data-edp-tracked-field><span>' + labelText + '</span><input id="edp-tracked" type="number" min="0" step="0.01" inputmode="decimal" value="' + (value || '') + '" placeholder="0.00"></label>');
+            }
+            function saveTrackedPopup(popup) {
+              const isIncome = activeEdit.kind === 'income' || /income/i.test(popup.querySelector('.edp-title')?.textContent || '');
+              const name = document.getElementById('edp-name')?.value.trim() || '';
+              const amount = Math.max(0, number(document.getElementById('edp-amount')?.value));
+              if (!name || amount <= .004) return;
+              const selectedDay = Math.max(0, Math.min(31, Math.floor(number(document.getElementById('edp-due')?.value))));
+              const tracked = Math.max(0, number(document.getElementById('edp-tracked')?.value));
+              const state = loadState();
+              const info = budgetFor(state);
+              const id = activeEdit.id || uid();
+              const note = document.getElementById('edp-note')?.value.trim() || '';
+              if (isIncome) {
+                const next = { id, name, amount, note, type: incomeLabels[document.getElementById('edp-type')?.value] ? document.getElementById('edp-type').value : 'otherIncome', payDay: selectedDay };
+                info.budget.incomeItems = [...info.budget.incomeItems.filter(item => item.id !== id), next];
+                setTrackingValue(state, info.month, 'income', id, tracked);
+              } else {
+                const next = { id, name, amount, note, category: categoryLabels[document.getElementById('edp-type')?.value] ? document.getElementById('edp-type').value : (activeEdit.category || 'other'), dueDay: selectedDay };
+                info.budget.bills = [...info.budget.bills.filter(item => item.id !== id), next];
+                setTrackingValue(state, info.month, 'expense', id, tracked);
+              }
+              syncBudgetTotals(state, info.budget);
+              try { localStorage.setItem('debtwizard-active-page', 'budget'); sessionStorage.setItem('debtwizard-active-page', 'budget'); } catch {}
+              saveState(state);
+              location.reload();
+            }
             function apply() {
               addStyle();
               const form = document.getElementById('budget-form');
@@ -137,8 +221,23 @@
               updateLabels(active);
               updateIncomeRows(active);
               updateAssignedRows(active);
+              patchTrackingField();
             }
             document.addEventListener('click', event => {
+              const editButton = event.target.closest('[data-edp-act]');
+              if (editButton) {
+                activeEdit = { kind: editButton.dataset.kind || '', id: editButton.dataset.id || '', category: editButton.dataset.category || '' };
+                setTimeout(patchTrackingField, 30);
+                setTimeout(patchTrackingField, 120);
+              }
+              const saveButton = event.target.closest('[data-edp-save]');
+              if (saveButton && document.querySelector('.edp-popup #edp-tracked')) {
+                event.preventDefault();
+                event.stopPropagation();
+                event.stopImmediatePropagation();
+                saveTrackedPopup(document.querySelector('.edp-popup'));
+                return;
+              }
               const button = event.target.closest('[data-budget-view]');
               if (button) { event.preventDefault(); save(button.dataset.budgetView); apply(); return; }
               if (event.target.closest('[data-act="nav"], .tab-btn, [data-act^="budget-month"]')) setTimeout(apply, 80);
