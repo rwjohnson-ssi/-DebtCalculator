@@ -17,7 +17,36 @@
         const response = await fetch(`mobile.html?v=31&runtime=${Date.now()}&strategyStyle=1${extra}`, { cache: 'no-store' });
         if (!response.ok) throw new Error('Unable to load mobile app shell.');
         let html = await response.text();
-        html = html.replace(/paycheck-form-overlap-fix-v4\.js\?v=\d+/g, 'paycheck-form-overlap-fix-v4.js?v=23');
+        html = html.replace(/paycheck-form-overlap-fix-v4\.js\?v=\d+/g, 'paycheck-form-overlap-fix-v4.js?v=24');
+        html = html.replace('</body>', `<script>
+          (() => {
+            const KEY = 'debtwizard-budget-mode';
+            const modes = ['planned','spent','remaining'];
+            function mode() {
+              try { const value = localStorage.getItem(KEY) || 'planned'; return modes.includes(value) ? value : 'planned'; }
+              catch { return 'planned'; }
+            }
+            function save(value) { try { localStorage.setItem(KEY, modes.includes(value) ? value : 'planned'); } catch {} }
+            function apply() {
+              const form = document.getElementById('budget-form');
+              if (!form) return;
+              if (!form.querySelector('.budget-view-toggle')) {
+                form.insertAdjacentHTML('afterbegin', '<div class="budget-view-toggle" role="tablist" aria-label="Budget view"><button type="button" data-budget-view="planned">Planned</button><button type="button" data-budget-view="spent">Spent</button><button type="button" data-budget-view="remaining">Remaining</button></div><p class="budget-view-note">This first step adds the view switcher. Row values and status bars will be wired in the next update.</p>');
+              }
+              const active = mode();
+              form.querySelectorAll('[data-budget-view]').forEach(button => button.classList.toggle('active', button.dataset.budgetView === active));
+            }
+            document.addEventListener('click', event => {
+              const button = event.target.closest('[data-budget-view]');
+              if (button) { event.preventDefault(); save(button.dataset.budgetView); apply(); return; }
+              if (event.target.closest('[data-act="nav"], .tab-btn, [data-act^="budget-month"]')) setTimeout(apply, 80);
+            }, true);
+            const screen = document.getElementById('screen');
+            if (screen) new MutationObserver(() => setTimeout(apply, 0)).observe(screen, { childList: true, subtree: true });
+            window.addEventListener('load', () => { setTimeout(apply, 80); setTimeout(apply, 450); });
+            setTimeout(apply, 0);
+          })();
+        <\/script></body>`);
         document.open();
         document.write(html);
         document.close();
