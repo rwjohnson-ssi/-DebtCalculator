@@ -14,10 +14,10 @@
     (async () => {
       try {
         const extra = location.search ? '&' + location.search.slice(1) : '';
-        const response = await fetch(`mobile.html?v=42&runtime=${Date.now()}&strategyStyle=1${extra}`, { cache: 'no-store' });
+        const response = await fetch(`mobile.html?v=43&runtime=${Date.now()}&strategyStyle=1${extra}`, { cache: 'no-store' });
         if (!response.ok) throw new Error('Unable to load mobile app shell.');
         let html = await response.text();
-        html = html.replace(/paycheck-form-overlap-fix-v4\.js\?v=\d+/g, 'paycheck-form-overlap-fix-v4.js?v=33');
+        html = html.replace(/paycheck-form-overlap-fix-v4\.js\?v=\d+/g, 'paycheck-form-overlap-fix-v4.js?v=34');
         html = html.replace('</body>', `<script>
           (() => {
             const KEY = 'debtwizard-budget-mode';
@@ -40,7 +40,7 @@
               if (document.getElementById('budget-income-bar-style')) return;
               const style = document.createElement('style');
               style.id = 'budget-income-bar-style';
-              style.textContent = '.budget-income-bar{display:block;width:100%;height:6px;border-radius:999px;background:#edf1f2;overflow:hidden;margin-top:8px}.budget-income-fill{display:block;height:100%;border-radius:inherit;background:#0f516b;width:0%;transition:width .18s ease}.budget-income-fill.spent{background:#20bfd7}.budget-income-fill.planned{background:#c9d3d7}.budget-income-fill.remaining{background:#0f516b}';
+              style.textContent = '.budget-income-bar{grid-column:1/-1;display:block;width:100%;height:6px;border-radius:999px;background:#edf1f2;overflow:hidden;margin-top:8px}.budget-income-fill{display:block;height:100%;border-radius:inherit;background:#0f516b;width:0%;transition:width .18s ease}.budget-income-fill.spent{background:#20bfd7}.budget-income-fill.planned{background:#c9d3d7}.budget-income-fill.remaining{background:#0f516b}';
               document.head.appendChild(style);
             }
             function setHeaderLabel(scope, active, title) {
