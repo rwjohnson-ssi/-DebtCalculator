@@ -14,10 +14,10 @@
     (async () => {
       try {
         const extra = location.search ? '&' + location.search.slice(1) : '';
-        const response = await fetch(`mobile.html?v=39&runtime=${Date.now()}&strategyStyle=1${extra}`, { cache: 'no-store' });
+        const response = await fetch(`mobile.html?v=40&runtime=${Date.now()}&strategyStyle=1${extra}`, { cache: 'no-store' });
         if (!response.ok) throw new Error('Unable to load mobile app shell.');
         let html = await response.text();
-        html = html.replace(/paycheck-form-overlap-fix-v4\.js\?v=\d+/g, 'paycheck-form-overlap-fix-v4.js?v=30');
+        html = html.replace(/paycheck-form-overlap-fix-v4\.js\?v=\d+/g, 'paycheck-form-overlap-fix-v4.js?v=31');
         html = html.replace('</body>', `<script>
           (() => {
             const KEY = 'debtwizard-budget-mode';
@@ -77,7 +77,7 @@
               section.querySelectorAll('.edp-item-row').forEach(row => {
                 const values = incomeValues(row);
                 const amountNode = row.querySelector('.edp-amount');
-                if (amountNode) amountNode.innerHTML = `${money(values[active])}<small>Edit ›</small>`;
+                if (amountNode) amountNode.innerHTML = money(values[active]) + '<small>Edit ›</small>';
               });
             }
             function apply() {
