@@ -14,10 +14,10 @@
     (async () => {
       try {
         const extra = location.search ? '&' + location.search.slice(1) : '';
-        const response = await fetch(`mobile.html?v=32&runtime=${Date.now()}&strategyStyle=1${extra}`, { cache: 'no-store' });
+        const response = await fetch(`mobile.html?v=33&runtime=${Date.now()}&strategyStyle=1${extra}`, { cache: 'no-store' });
         if (!response.ok) throw new Error('Unable to load mobile app shell.');
         let html = await response.text();
-        html = html.replace(/paycheck-form-overlap-fix-v4\.js\?v=\d+/g, 'paycheck-form-overlap-fix-v4.js?v=25');
+        html = html.replace(/paycheck-form-overlap-fix-v4\.js\?v=\d+/g, 'paycheck-form-overlap-fix-v4.js?v=26');
         html = html.replace('</body>', `<script>
           (() => {
             const KEY = 'debtwizard-budget-mode';
@@ -34,7 +34,7 @@
               if (document.getElementById('budget-view-runtime-style')) return;
               const style = document.createElement('style');
               style.id = 'budget-view-runtime-style';
-              style.textContent = '.budget-status-bar{grid-column:1/-1;width:100%;height:6px;border-radius:999px;background:#edf1f2;overflow:hidden;margin-top:2px}.budget-status-fill{display:block;height:100%;width:0%;border-radius:inherit;background:#0f516b;transition:width .18s ease}.budget-status-fill.planned{background:#c9d3d7}.budget-status-fill.spent{background:#20bfd7}.budget-status-fill.remaining{background:#0f516b}.edp-item-row,.budget-bill-row{grid-template-rows:auto auto!important}.budget-section-mode-label,.edp-cat-total{color:#5f6f76!important;font-weight:850!important}';
+              style.textContent = '.budget-view-note{margin:-5px 0 14px;text-align:center;color:#65747a;font-size:.86rem;line-height:1.35;font-weight:800}.budget-view-note strong{color:#0f7893}.budget-status-bar{grid-column:1/-1;width:100%;height:6px;border-radius:999px;background:#edf1f2;overflow:hidden;margin-top:2px}.budget-status-fill{display:block;height:100%;width:0%;border-radius:inherit;background:#0f516b;transition:width .18s ease}.budget-status-fill.planned{background:#c9d3d7}.budget-status-fill.spent{background:#20bfd7}.budget-status-fill.remaining{background:#0f516b}.edp-item-row,.budget-bill-row{grid-template-rows:auto auto!important}.budget-section-mode-label,.edp-cat-total{color:#5f6f76!important;font-weight:850!important}';
               document.head.appendChild(style);
             }
             function labelFor(active, title) {
@@ -89,6 +89,31 @@
                 return { planned: sum.planned + values.planned, spent: sum.spent + values.spent, remaining: sum.remaining + values.remaining };
               }, { planned: 0, spent: 0, remaining: 0 });
             }
+            function updateFeaturedSummary(active, sum) {
+              const tile = document.querySelector('.budget-summary-grid .stat-tile.featured');
+              if (!tile) return;
+              const label = tile.querySelector('.stat-label');
+              const value = tile.querySelector('.stat-value');
+              const note = tile.querySelector('.stat-note');
+              if (!tile.dataset.originalLabel) {
+                tile.dataset.originalLabel = label?.textContent || '';
+                tile.dataset.originalValue = value?.textContent || '';
+                tile.dataset.originalNote = note?.textContent || '';
+              }
+              if (active === 'planned') {
+                if (label) label.textContent = 'Planned budget view';
+                if (value) value.textContent = money(sum.planned);
+                if (note) note.textContent = 'Rows below show planned amounts';
+              } else if (active === 'spent') {
+                if (label) label.textContent = 'Spent so far';
+                if (value) value.textContent = money(sum.spent);
+                if (note) note.textContent = 'Spent tracking will be added next';
+              } else {
+                if (label) label.textContent = 'Remaining budget view';
+                if (value) value.textContent = money(sum.remaining);
+                if (note) note.textContent = 'Rows below show remaining amounts';
+              }
+            }
             function apply() {
               addStyle();
               const form = document.getElementById('budget-form');
@@ -102,8 +127,9 @@
               rows.forEach(row => updateRow(row, active));
               updateHeaders(active);
               const sum = totals(rows);
+              updateFeaturedSummary(active, sum);
               const note = form.querySelector('[data-budget-view-note]');
-              if (note) note.innerHTML = active === 'spent' ? `<strong>${money(sum.spent)}</strong> tracked so far` : active === 'remaining' ? `<strong>${money(sum.remaining)}</strong> remaining from planned rows` : `<strong>${money(sum.planned)}</strong> planned across visible rows`;
+              if (note) note.innerHTML = active === 'spent' ? `<strong>${money(sum.spent)}</strong> tracked so far. Scroll down to see row bars.` : active === 'remaining' ? `<strong>${money(sum.remaining)}</strong> remaining from planned rows. Scroll down to see row bars.` : `<strong>${money(sum.planned)}</strong> planned across visible rows. Scroll down to see row bars.`;
             }
             document.addEventListener('click', event => {
               const button = event.target.closest('[data-budget-view]');
