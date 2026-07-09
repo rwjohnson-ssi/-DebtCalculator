@@ -14,10 +14,10 @@
     (async () => {
       try {
         const extra = location.search ? '&' + location.search.slice(1) : '';
-        const response = await fetch(`mobile.html?v=48&runtime=${Date.now()}&strategyStyle=1${extra}`, { cache: 'no-store' });
+        const response = await fetch(`mobile.html?v=49&runtime=${Date.now()}&strategyStyle=1${extra}`, { cache: 'no-store' });
         if (!response.ok) throw new Error('Unable to load mobile app shell.');
         let html = await response.text();
-        html = html.replace(/paycheck-form-overlap-fix-v4\.js\?v=\d+/g, 'paycheck-form-overlap-fix-v4.js?v=39');
+        html = html.replace(/paycheck-form-overlap-fix-v4\.js\?v=\d+/g, 'paycheck-form-overlap-fix-v4.js?v=40');
         html = html.replace('</body>', `<script>
           (() => {
             const STORE = 'debt-calculator-v2';
@@ -31,6 +31,7 @@
             const money = value => new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(Number.isFinite(value) ? value : 0);
             const number = value => Number.isFinite(Number.parseFloat(value)) ? Number.parseFloat(value) : 0;
             const parseMoney = value => number(String(value || '').replace(/[^0-9.-]/g, ''));
+            const esc = value => String(value ?? '').replace(/[&<>"']/g, char => ({ '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;' }[char]));
             function uid() { return 'item-' + Date.now().toString(36) + '-' + Math.random().toString(36).slice(2, 8); }
             function mode() {
               try { const value = localStorage.getItem(KEY) || 'planned'; return modes.includes(value) ? value : 'planned'; }
@@ -47,13 +48,22 @@
               const date = new Date();
               return date.getFullYear() + '-' + String(date.getMonth() + 1).padStart(2, '0');
             }
+            function monthLabel(month) {
+              const parts = String(month || currentMonth()).split('-').map(Number);
+              return new Date(parts[0], parts[1] - 1, 1).toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
+            }
+            function dayLabel(value) {
+              const date = String(value || '').match(/^\d{4}-\d{2}-\d{2}$/) ? new Date(value + 'T12:00:00') : new Date();
+              return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+            }
             function budgetFor(state) {
               state.settings = state.settings && typeof state.settings === 'object' ? state.settings : {};
               state.settings.monthlyBudgets = state.settings.monthlyBudgets && typeof state.settings.monthlyBudgets === 'object' ? state.settings.monthlyBudgets : {};
               const month = currentMonth();
-              const budget = state.settings.monthlyBudgets[month] || (state.settings.monthlyBudgets[month] = { incomeSources: {}, budgetCategories: {}, bills: [], schedule: { buffer: 0, income: {}, budget: {} } });
+              const budget = state.settings.monthlyBudgets[month] || (state.settings.monthlyBudgets[month] = { incomeSources: {}, budgetCategories: {}, incomeItems: [], bills: [], transactions: [], schedule: { buffer: 0, income: {}, budget: {} } });
               budget.incomeItems = Array.isArray(budget.incomeItems) ? budget.incomeItems : [];
               budget.bills = Array.isArray(budget.bills) ? budget.bills : [];
+              budget.transactions = Array.isArray(budget.transactions) ? budget.transactions : [];
               state.settings.budgetTracking = state.settings.budgetTracking && typeof state.settings.budgetTracking === 'object' ? state.settings.budgetTracking : {};
               state.settings.budgetTracking[month] = state.settings.budgetTracking[month] && typeof state.settings.budgetTracking[month] === 'object' ? state.settings.budgetTracking[month] : {};
               return { month, budget, tracking: state.settings.budgetTracking[month] };
@@ -91,7 +101,7 @@
               if (document.getElementById('budget-row-bar-style')) return;
               const style = document.createElement('style');
               style.id = 'budget-row-bar-style';
-              style.textContent = '.budget-income-bar,.budget-assigned-bar{display:block;width:100%;height:10px;border-radius:999px;background:#d9e3e7;overflow:hidden;margin-top:12px}.budget-income-fill,.budget-assigned-fill{display:block;height:100%;border-radius:inherit;background:#0f516b;width:0%;transition:width .18s ease}.budget-income-fill.spent,.budget-assigned-fill.spent{background:#20bfd7}.budget-income-fill.planned,.budget-assigned-fill.planned{background:#0f7893}.budget-income-fill.remaining,.budget-assigned-fill.remaining{background:#0f516b}';
+              style.textContent = '.budget-income-bar,.budget-assigned-bar{display:block;width:100%;height:10px;border-radius:999px;background:#d9e3e7;overflow:hidden;margin-top:12px}.budget-income-fill,.budget-assigned-fill{display:block;height:100%;border-radius:inherit;background:#0f516b;width:0%;transition:width .18s ease}.budget-income-fill.spent,.budget-assigned-fill.spent{background:#20bfd7}.budget-income-fill.planned,.budget-assigned-fill.planned{background:#0f7893}.budget-income-fill.remaining,.budget-assigned-fill.remaining{background:#0f516b}.dw-trans-page{min-height:calc(100vh - 74px);background:#f4f6f7;padding-bottom:118px}.dw-trans-hero{background:#35c461;color:white;padding:calc(18px + env(safe-area-inset-top,0px)) 26px 22px}.dw-trans-top{display:grid;grid-template-columns:80px 1fr 80px;align-items:center;margin-bottom:15px}.dw-trans-title{text-align:center;font-weight:900;font-size:1.08rem}.dw-trans-select{text-align:right;font-weight:750}.dw-trans-search{display:flex;align-items:center;gap:9px;background:white;border-radius:12px;padding:11px 14px;color:#8a969b;font-weight:750}.dw-trans-search input{border:0;outline:0;background:transparent;font-size:1rem;width:100%;color:#263137}.dw-trans-wrap{padding:26px}.dw-trans-card{background:white;border-radius:20px;box-shadow:0 12px 28px rgba(22,43,52,.06);padding:18px;margin-bottom:26px}.dw-deleted-row{display:grid;grid-template-columns:auto 1fr auto;align-items:center;gap:14px;font-weight:900;font-size:1.05rem;color:#171d23}.dw-trash{font-size:1.55rem;color:#004b75}.dw-chev{font-size:2rem;color:#0079a8}.dw-month-title{font-weight:900;color:#47555b;margin-bottom:13px}.dw-tx-row{display:grid;grid-template-columns:auto minmax(0,1fr) auto;align-items:center;gap:14px;padding:13px 0}.dw-date-dot{width:54px;height:54px;border-radius:50%;border:2px solid #e6ebee;display:grid;place-items:center;text-align:center;color:#516269;font-weight:900;line-height:1}.dw-date-dot small{display:block;font-size:.74rem}.dw-tx-name{font-size:1.06rem;font-weight:800;color:#20272d}.dw-tx-cat{color:#0079a8;font-weight:850;margin-top:3px}.dw-tx-amount{font-size:1.08rem;font-weight:850;color:#20272d}.dw-trans-empty{text-align:center;padding:52px 14px 72px}.dw-trans-illus{font-size:4rem;margin-bottom:22px}.dw-trans-empty h2{text-align:left;font-size:2.55rem;line-height:1.05;margin:0 0 18px;color:#171d23;font-weight:950}.dw-trans-empty p{text-align:left;color:#20272d;font-size:1.08rem;line-height:1.35;margin:0 0 26px}.dw-first-btn{width:100%;border:0;border-radius:13px;background:#004b75;color:white;font-size:1.03rem;font-weight:900;padding:18px}.dw-trans-fab{position:fixed;right:24px;bottom:calc(92px + env(safe-area-inset-bottom,0px));z-index:70;width:70px;height:70px;border-radius:50%;border:0;background:#004b75;color:white;font-size:3rem;line-height:1;box-shadow:0 10px 28px rgba(0,35,62,.26)}';
               document.head.appendChild(style);
             }
             function setHeaderLabel(scope, active, title) {
@@ -229,8 +239,34 @@
               saveState(state);
               location.reload();
             }
+            function patchTransactionNav() {
+              const button = document.querySelector('.tab-btn[data-page="track"]');
+              if (!button || button.dataset.txLabel === '1') return;
+              button.dataset.txLabel = '1';
+              const icon = button.querySelector('.tab-icon');
+              if (icon) icon.textContent = '$';
+              const label = button.querySelector('span:last-child');
+              if (label) label.textContent = 'Transactions';
+            }
+            function transactionRows(transactions) {
+              return transactions.map(item => '<div class="dw-tx-row"><span class="dw-date-dot"><span><small>' + esc(dayLabel(item.date).split(' ')[0]) + '</small>' + esc(dayLabel(item.date).split(' ')[1] || '') + '</span></span><span><div class="dw-tx-name">' + esc(item.merchant || item.source || 'Transaction') + '</div><div class="dw-tx-cat">' + esc(item.budgetItemName || item.category || 'Unassigned') + '</div></span><span class="dw-tx-amount">' + (item.type === 'income' ? '' : '-') + money(Math.max(0, number(item.amount))) + '</span></div>').join('');
+            }
+            function patchTransactionsPage() {
+              patchTransactionNav();
+              if (!document.querySelector('.tab-btn.active[data-page="track"]')) return;
+              const screen = document.getElementById('screen');
+              if (!screen || screen.dataset.transactionsShell === '1') return;
+              const state = loadState();
+              const info = budgetFor(state);
+              saveState(state);
+              const tx = [...info.budget.transactions].sort((a, b) => String(b.date || '').localeCompare(String(a.date || '')));
+              screen.dataset.transactionsShell = '1';
+              screen.innerHTML = '<section class="dw-trans-page"><header class="dw-trans-hero"><div class="dw-trans-top"><span></span><div class="dw-trans-title">Transactions</div><div class="dw-trans-select">Select</div></div><label class="dw-trans-search"><span>⌕</span><input type="search" placeholder="Search" disabled></label></header><main class="dw-trans-wrap"><article class="dw-trans-card dw-deleted-row"><span class="dw-trash">♲</span><span>Deleted</span><span class="dw-chev">›</span></article>' + (tx.length ? '<article class="dw-trans-card"><div class="dw-month-title">' + esc(monthLabel(info.month)) + '</div>' + transactionRows(tx) + '</article>' : '<section class="dw-trans-empty"><div class="dw-trans-illus">💸</div><h2>Time to track your first transaction</h2><p>Now that your budget is set up, think of the last thing you spent money on, and let’s track it.</p><button type="button" class="dw-first-btn" data-edp-trans-add>Track My First Transaction</button></section>') + '</main><button type="button" class="dw-trans-fab" data-edp-trans-add aria-label="Add transaction">+</button></section>';
+            }
             function apply() {
               addStyle();
+              patchTransactionNav();
+              patchTransactionsPage();
               const form = document.getElementById('budget-form');
               if (!form) return;
               if (!form.querySelector('.budget-view-toggle')) form.insertAdjacentHTML('afterbegin', '<div class="budget-view-toggle" role="tablist" aria-label="Budget view"><button type="button" data-budget-view="planned">Planned</button><button type="button" data-budget-view="spent">Spent</button><button type="button" data-budget-view="remaining">Remaining</button></div><p class="budget-view-note"></p>');
@@ -259,9 +295,11 @@
                 saveTrackedPopup(document.querySelector('.edp-popup'));
                 return;
               }
+              const txButton = event.target.closest('[data-edp-trans-add]');
+              if (txButton) { event.preventDefault(); alert('Add Transaction popup is the next update.'); return; }
               const button = event.target.closest('[data-budget-view]');
               if (button) { event.preventDefault(); save(button.dataset.budgetView); apply(); return; }
-              if (event.target.closest('[data-act="nav"], .tab-btn, [data-act^="budget-month"]')) setTimeout(apply, 80);
+              if (event.target.closest('[data-act="nav"], .tab-btn, [data-act^="budget-month"]')) { const screen = document.getElementById('screen'); if (screen) screen.dataset.transactionsShell = ''; setTimeout(apply, 80); }
             }, true);
             const screen = document.getElementById('screen');
             if (screen) new MutationObserver(() => setTimeout(apply, 0)).observe(screen, { childList: true, subtree: true });
