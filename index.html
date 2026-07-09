@@ -14,14 +14,17 @@
     (async () => {
       try {
         const extra = location.search ? '&' + location.search.slice(1) : '';
-        const response = await fetch(`mobile.html?v=38&runtime=${Date.now()}&strategyStyle=1${extra}`, { cache: 'no-store' });
+        const response = await fetch(`mobile.html?v=39&runtime=${Date.now()}&strategyStyle=1${extra}`, { cache: 'no-store' });
         if (!response.ok) throw new Error('Unable to load mobile app shell.');
         let html = await response.text();
-        html = html.replace(/paycheck-form-overlap-fix-v4\.js\?v=\d+/g, 'paycheck-form-overlap-fix-v4.js?v=29');
+        html = html.replace(/paycheck-form-overlap-fix-v4\.js\?v=\d+/g, 'paycheck-form-overlap-fix-v4.js?v=30');
         html = html.replace('</body>', `<script>
           (() => {
             const KEY = 'debtwizard-budget-mode';
             const modes = ['planned','spent','remaining'];
+            const money = value => new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(Number.isFinite(value) ? value : 0);
+            const number = value => Number.isFinite(Number.parseFloat(value)) ? Number.parseFloat(value) : 0;
+            const parseMoney = value => number(String(value || '').replace(/[^0-9.-]/g, ''));
             function mode() {
               try { const value = localStorage.getItem(KEY) || 'planned'; return modes.includes(value) ? value : 'planned'; }
               catch { return 'planned'; }
@@ -29,9 +32,9 @@
             function save(value) { try { localStorage.setItem(KEY, modes.includes(value) ? value : 'planned'); } catch {} }
             function label(active, title) { return /income/i.test(title || '') ? (active === 'spent' ? 'Received' : active === 'remaining' ? 'Remaining' : 'Planned') : (active === 'spent' ? 'Spent' : active === 'remaining' ? 'Remaining' : 'Planned'); }
             function noteText(active) {
-              if (active === 'spent') return 'Spent view selected. Section labels updated; row values come next.';
-              if (active === 'remaining') return 'Remaining view selected. Section labels updated; row values come next.';
-              return 'Planned view selected. Section labels updated; row values come next.';
+              if (active === 'spent') return 'Spent view selected. Income rows now show received amount.';
+              if (active === 'remaining') return 'Remaining view selected. Income rows now show planned minus received.';
+              return 'Planned view selected. Income rows show planned income.';
             }
             function setHeaderLabel(scope, active, title) {
               if (!scope) return;
@@ -55,6 +58,28 @@
                 if (/^(Income|Assigned categories|Bills)$/.test(title)) setHeaderLabel(titleNode.closest('.section') || titleNode.parentElement, active, title);
               });
             }
+            function incomeSection() {
+              return [...document.querySelectorAll('.section')].find(section => (section.querySelector('.section-title')?.textContent || '').trim().startsWith('Income'));
+            }
+            function incomeValues(row) {
+              if (!row.dataset.incomePlanned) {
+                const amountNode = row.querySelector('.edp-amount,.budget-bill-amount');
+                row.dataset.incomePlanned = String(parseMoney(amountNode?.childNodes?.[0]?.textContent || amountNode?.textContent || '0'));
+                row.dataset.incomeReceived = String(parseMoney(row.dataset.received || '0'));
+              }
+              const planned = Math.max(0, number(row.dataset.incomePlanned));
+              const received = Math.max(0, number(row.dataset.incomeReceived));
+              return { planned, spent: received, remaining: Math.max(0, planned - received) };
+            }
+            function updateIncomeRows(active) {
+              const section = incomeSection();
+              if (!section) return;
+              section.querySelectorAll('.edp-item-row').forEach(row => {
+                const values = incomeValues(row);
+                const amountNode = row.querySelector('.edp-amount');
+                if (amountNode) amountNode.innerHTML = `${money(values[active])}<small>Edit ›</small>`;
+              });
+            }
             function apply() {
               const form = document.getElementById('budget-form');
               if (!form) return;
@@ -64,6 +89,7 @@
               const note = form.querySelector('.budget-view-note');
               if (note) note.textContent = noteText(active);
               updateLabels(active);
+              updateIncomeRows(active);
             }
             document.addEventListener('click', event => {
               const button = event.target.closest('[data-budget-view]');
