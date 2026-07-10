@@ -6,9 +6,10 @@
   const BUDGET_MODES = ["planned", "spent", "remaining"];
 
   function addStyles() {
-    if (document.getElementById("debtwizard-ui-fixes-v5")) return;
+    if (document.getElementById("debtwizard-ui-fixes-v6")) return;
+    document.getElementById("debtwizard-ui-fixes-v5")?.remove();
     const style = document.createElement("style");
-    style.id = "debtwizard-ui-fixes-v5";
+    style.id = "debtwizard-ui-fixes-v6";
     style.textContent = `
       @media (max-width: 560px) {
         #paycheck-overlay .paycheck-config { display:block!important; padding:16px!important; }
@@ -82,16 +83,22 @@
       .dw-more-icon,.dw-more-arrow { color:#0f7893; }
       .dw-more-arrow { font-size:1.5rem; }
 
-      /* Match the Add Transaction form to DebtWizard instead of EveryDollar green. */
-      .dw-tx-root { background:#eefbfe!important; }
-      .dw-tx-backdrop { background:rgba(0,55,76,.34)!important; }
+      /* Match the Add Transaction form to DebtWizard and keep its header visible. */
+      .dw-tx-root {
+        position:fixed!important; inset:0!important; z-index:140!important;
+        overflow:hidden!important; background:#eefbfe!important;
+      }
+      .dw-tx-backdrop { position:fixed!important; inset:0!important; background:rgba(0,55,76,.34)!important; }
       .dw-tx-sheet {
-        top:0!important; bottom:0!important; max-height:none!important; border-radius:0!important;
+        position:fixed!important; inset:0!important; width:100%!important; height:100%!important;
+        max-height:none!important; overflow-y:auto!important; overflow-x:hidden!important;
+        -webkit-overflow-scrolling:touch; overscroll-behavior:contain;
+        border-radius:0!important;
         background:linear-gradient(180deg,#dff8fc 0,#f7fcfd 230px,#f7fcfd 100%)!important;
         box-shadow:none!important; padding-bottom:env(safe-area-inset-bottom,0px)!important;
       }
       .dw-tx-sheet-head {
-        position:sticky!important; top:0!important; z-index:3!important;
+        position:sticky!important; top:0!important; z-index:5!important;
         border-radius:0!important; padding:calc(14px + env(safe-area-inset-top,0px)) 24px 22px!important;
         background:linear-gradient(135deg,#087b96,#27bfd2)!important;
         color:#fff!important; box-shadow:0 8px 22px rgba(8,123,150,.18)!important;
@@ -171,6 +178,17 @@
     if (pair) pair.classList.add("paycheck-fields-stacked-mobile");
   }
 
+  function pinTransactionTop() {
+    const root = document.querySelector(".dw-tx-root");
+    const sheet = root?.querySelector(".dw-tx-sheet");
+    if (!root || !sheet) return false;
+    root.scrollTop = 0;
+    sheet.scrollTop = 0;
+    try { sheet.scrollTo({ top: 0, left: 0, behavior: "instant" }); }
+    catch { sheet.scrollTo(0, 0); }
+    return true;
+  }
+
   function buildNavigation() {
     const bar = document.getElementById("tabbar");
     if (!bar) return false;
@@ -219,6 +237,11 @@
       applyBudgetViewToggle();
       return;
     }
+    if (event.target.closest("[data-edp-trans-add]")) {
+      setTimeout(pinTransactionTop, 0);
+      setTimeout(pinTransactionTop, 80);
+      setTimeout(pinTransactionTop, 220);
+    }
     if (event.target.closest(".dw-nav-more")) {
       event.preventDefault();
       openMoreMenu();
@@ -247,7 +270,13 @@
     applyPaycheckLayout();
     applyBudgetViewToggle();
     buildNavigation();
+    pinTransactionTop();
   }
+
+  const observer = new MutationObserver(() => {
+    if (document.querySelector(".dw-tx-root")) requestAnimationFrame(pinTransactionTop);
+  });
+  observer.observe(document.documentElement, { childList: true, subtree: true });
 
   window.addEventListener("load", () => {
     initialize();
