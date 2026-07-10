@@ -13,7 +13,8 @@
   };
 
   const num = value => Number.isFinite(Number.parseFloat(value)) ? Number.parseFloat(value) : 0;
-  const money = value => new Intl.NumberFormat("en-US", { style: "currency", currency: "USD" }).format(Math.max(0, num(value)));
+  const currencyValue = value => Math.max(0, num(String(value ?? "").replace(/[^0-9.-]/g, "")));
+  const money = value => new Intl.NumberFormat("en-US", { style: "currency", currency: "USD" }).format(currencyValue(value));
   const esc = value => String(value ?? "").replace(/[&<>"']/g, char => ({ "&":"&amp;", "<":"&lt;", ">":"&gt;", '"':"&quot;", "'":"&#39;" }[char]));
 
   function loadState() {
@@ -45,10 +46,10 @@
   }
 
   function addStyles() {
-    if (document.getElementById("debtwizard-ui-fixes-v11")) return;
+    if (document.getElementById("debtwizard-ui-fixes-v12")) return;
     document.querySelectorAll('[id^="debtwizard-ui-fixes-v"]').forEach(node => node.remove());
     const style = document.createElement("style");
-    style.id = "debtwizard-ui-fixes-v11";
+    style.id = "debtwizard-ui-fixes-v12";
     style.textContent = `
       @media (max-width:560px){
         #paycheck-overlay .paycheck-config{display:block!important;padding:16px!important}
@@ -81,7 +82,8 @@
       .dw-tx-body{padding:24px 22px 120px!important}.dw-tx-panel,.dw-tx-budget-row,.dw-tx-note,.dw-tx-selected-items{border:1px solid #dbe8ec!important;border-radius:20px!important;background:#fff!important;box-shadow:0 8px 22px rgba(15,81,107,.07)!important}
       .dw-tx-panel{padding:0 22px!important;margin-bottom:18px!important}.dw-tx-field{min-height:68px!important;border-bottom:1px solid #e5edef!important}.dw-tx-field span,.dw-tx-account strong{color:#183f50!important;font-weight:850!important}.dw-tx-field input{color:#087b96!important;font-weight:800!important}.dw-tx-account small{color:#66777e!important}
       .dw-tx-budget-row{margin-bottom:18px!important;padding:20px 22px!important;color:#183f50!important;font-weight:850!important}.dw-tx-budget-row em{color:#087b96!important}.dw-tx-note{box-sizing:border-box!important;min-height:104px!important;padding:20px 22px!important;color:#183f50!important}
-      .dw-tx-selected-items{margin-bottom:0!important;padding:0 20px!important;border-radius:20px 20px 0 0!important}.dw-tx-selected-row{display:grid;grid-template-columns:32px minmax(0,1fr) 104px;align-items:center;gap:10px;min-height:66px;border-bottom:1px solid #e5edef}.dw-tx-selected-row:last-child{border-bottom:0}.dw-tx-selected-remove{width:25px;height:25px;border:0;border-radius:50%;background:#d94a42;color:#fff;font-weight:900}.dw-tx-selected-name{color:#183f50;font-weight:850}.dw-tx-split-input{width:100%;min-width:0;border:0;outline:0;background:transparent;color:#087b96;font:inherit;font-weight:850;text-align:right;font-size:1rem}.dw-tx-split-summary{margin:0 0 12px;padding:14px 20px;border-radius:0 0 20px 20px;background:#004b75;color:#fff;text-align:center;font-weight:850;box-shadow:0 8px 22px rgba(0,75,117,.16)}.dw-tx-split-summary.over{background:#b8443d}.dw-tx-split-summary strong{font-size:1.05rem}
+      .dw-currency-input{border:0!important;outline:0!important;background:transparent!important;text-align:right!important;color:#087b96!important;font:inherit!important;font-weight:850!important;font-size:1rem!important}
+      .dw-tx-selected-items{margin-bottom:0!important;padding:0 20px!important;border-radius:20px 20px 0 0!important}.dw-tx-selected-row{display:grid;grid-template-columns:32px minmax(0,1fr) 118px;align-items:center;gap:10px;min-height:66px;border-bottom:1px solid #e5edef}.dw-tx-selected-row:last-child{border-bottom:0}.dw-tx-selected-remove{width:25px;height:25px;border:0;border-radius:50%;background:#d94a42;color:#fff;font-weight:900}.dw-tx-selected-name{color:#183f50;font-weight:850}.dw-tx-split-input{width:100%;min-width:0;padding:12px 4px!important;border-radius:8px!important;background:#f5fafb!important}.dw-tx-split-input:focus{background:#fff!important;box-shadow:inset 0 0 0 2px #20bfd7!important}.dw-tx-split-summary{margin:0 0 12px;padding:14px 20px;border-radius:0 0 20px 20px;background:#004b75;color:#fff;text-align:center;font-weight:850;box-shadow:0 8px 22px rgba(0,75,117,.16)}.dw-tx-split-summary.over{background:#b8443d}.dw-tx-split-summary.complete{background:#087b96}.dw-tx-split-summary strong{font-size:1.05rem}
       .dw-selector{position:fixed;inset:0;z-index:240;background:#f4f7f8;overflow-y:auto;-webkit-overflow-scrolling:touch}
       .dw-selector-head{position:sticky;top:0;z-index:2;padding:calc(14px + env(safe-area-inset-top,0px)) 20px 18px;background:linear-gradient(135deg,#087b96,#27bfd2);color:#fff;box-shadow:0 8px 22px rgba(8,123,150,.18)}
       .dw-selector-top{display:grid;grid-template-columns:54px 1fr 54px;align-items:center;margin-bottom:15px}.dw-selector-back,.dw-selector-done{border:0;background:transparent;color:#fff;font-size:1rem;font-weight:850}.dw-selector-back{text-align:left;font-size:2rem;line-height:1}.dw-selector-done{text-align:right}.dw-selector-title{text-align:center;font-size:1.18rem;font-weight:950}
@@ -95,11 +97,6 @@
   function saveActivePage(page) {
     if (!page) return;
     try { localStorage.setItem(PAGE_KEY, page); sessionStorage.setItem(PAGE_KEY, page); } catch {}
-  }
-
-  function readActivePage() {
-    try { return sessionStorage.getItem(PAGE_KEY) || localStorage.getItem(PAGE_KEY) || ""; }
-    catch { return ""; }
   }
 
   function applyBudgetViewToggle() {
@@ -156,10 +153,47 @@
     return document.querySelector('.dw-tx-toggle [data-edp-trans-type="income"].active') ? "income" : "expense";
   }
 
+  function amountInput(sheet) {
+    return [...(sheet?.querySelectorAll(".dw-tx-field") || [])]
+      .find(field => field.querySelector("span")?.textContent?.trim() === "Amount")
+      ?.querySelector("input") || null;
+  }
+
+  function decorateCurrencyInput(input) {
+    if (!input || input.dataset.currencyReady === "1") return;
+    input.dataset.currencyReady = "1";
+    input.type = "text";
+    input.inputMode = "decimal";
+    input.autocomplete = "off";
+    input.classList.add("dw-currency-input");
+    const initial = currencyValue(input.value);
+    input.dataset.rawValue = initial ? initial.toFixed(2) : "";
+    input.value = initial ? money(initial) : "";
+  }
+
+  function showRawCurrency(input) {
+    if (!input?.classList.contains("dw-currency-input")) return;
+    const value = currencyValue(input.dataset.rawValue || input.value);
+    input.value = value ? value.toFixed(2) : "";
+    requestAnimationFrame(() => input.select());
+  }
+
+  function storeCurrencyInput(input) {
+    if (!input?.classList.contains("dw-currency-input")) return 0;
+    const value = currencyValue(input.value);
+    input.dataset.rawValue = value ? value.toFixed(2) : "";
+    return value;
+  }
+
+  function formatCurrencyInput(input) {
+    if (!input?.classList.contains("dw-currency-input")) return;
+    const value = storeCurrencyInput(input);
+    input.value = value ? money(value) : "";
+  }
+
   function transactionAmount(sheet) {
-    const fields = [...(sheet?.querySelectorAll(".dw-tx-field") || [])];
-    const amountField = fields.find(field => field.querySelector("span")?.textContent?.trim() === "Amount");
-    return Math.max(0, num(amountField?.querySelector("input")?.value));
+    const input = amountInput(sheet);
+    return currencyValue(input?.dataset.rawValue || input?.value);
   }
 
   function itemRemaining(kind, item, tracking) {
@@ -180,23 +214,24 @@
   function parseSelected(sheet) {
     try {
       const value = JSON.parse(sheet?.dataset.budgetItems || "[]");
-      return Array.isArray(value) ? value.map(item => ({ ...item, amount: Math.max(0, num(item.amount)) })) : [];
+      return Array.isArray(value) ? value.map(item => ({ ...item, amount: currencyValue(item.amount) })) : [];
     } catch { return []; }
   }
 
   function setSelected(sheet, selected) {
-    if (sheet) sheet.dataset.budgetItems = JSON.stringify(selected.map(item => ({ id: item.id, name: item.name, amount: Math.max(0, num(item.amount)) })));
+    if (sheet) sheet.dataset.budgetItems = JSON.stringify(selected.map(item => ({ id: item.id, name: item.name, amount: currencyValue(item.amount) })));
   }
 
   function updateSplitSummary(sheet) {
     if (!sheet) return;
     const selected = parseSelected(sheet);
     const total = transactionAmount(sheet);
-    const allocated = selected.reduce((sum, item) => sum + Math.max(0, num(item.amount)), 0);
+    const allocated = selected.reduce((sum, item) => sum + currencyValue(item.amount), 0);
     const left = total - allocated;
     const summary = sheet.querySelector(".dw-tx-split-summary");
     if (!summary) return;
     summary.classList.toggle("over", left < -0.004);
+    summary.classList.toggle("complete", Math.abs(left) <= 0.004 && total > 0);
     summary.innerHTML = left < -0.004
       ? `<strong>${money(Math.abs(left))}</strong> Over Assigned`
       : `<strong>${money(left)}</strong> Left to Split`;
@@ -214,16 +249,14 @@
       if (value) value.textContent = "Select ›";
       return;
     }
-    const rows = selected.map(item => `<div class="dw-tx-selected-row" data-dw-selected-id="${esc(item.id)}"><button type="button" class="dw-tx-selected-remove" data-dw-remove-selected="${esc(item.id)}" aria-label="Remove ${esc(item.name)}">−</button><span class="dw-tx-selected-name">${esc(item.name)}</span><input class="dw-tx-split-input" data-dw-split-id="${esc(item.id)}" type="number" min="0" step="0.01" inputmode="decimal" value="${item.amount ? item.amount.toFixed(2) : ""}" placeholder="$0.00" aria-label="Amount for ${esc(item.name)}"></div>`).join("");
+    const rows = selected.map(item => `<div class="dw-tx-selected-row" data-dw-selected-id="${esc(item.id)}"><button type="button" class="dw-tx-selected-remove" data-dw-remove-selected="${esc(item.id)}" aria-label="Remove ${esc(item.name)}">−</button><span class="dw-tx-selected-name">${esc(item.name)}</span><input class="dw-tx-split-input dw-currency-input" data-currency-ready="1" data-raw-value="${item.amount ? item.amount.toFixed(2) : ""}" data-dw-split-id="${esc(item.id)}" type="text" inputmode="decimal" autocomplete="off" value="${item.amount ? money(item.amount) : ""}" placeholder="$0.00" aria-label="Amount for ${esc(item.name)}"></div>`).join("");
     row.insertAdjacentHTML("beforebegin", `<section class="dw-tx-selected-items">${rows}</section><div class="dw-tx-split-summary"></div>`);
     const value = row.querySelector("em");
     if (value) value.textContent = "Add another ›";
     updateSplitSummary(sheet);
   }
 
-  function closeSelector() {
-    document.querySelector(".dw-selector")?.remove();
-  }
+  function closeSelector() { document.querySelector(".dw-selector")?.remove(); }
 
   function openSelector() {
     const sheet = document.querySelector(".dw-tx-sheet");
@@ -266,7 +299,7 @@
     let pending = [];
     try { pending = JSON.parse(selector.dataset.dwPendingItems || "[]"); } catch {}
     const prior = new Map(parseSelected(sheet).map(item => [String(item.id), item.amount]));
-    const next = (Array.isArray(pending) ? pending : []).map(item => ({ ...item, amount: prior.get(String(item.id)) ?? Math.max(0, num(item.amount)) }));
+    const next = (Array.isArray(pending) ? pending : []).map(item => ({ ...item, amount: prior.get(String(item.id)) ?? currencyValue(item.amount) }));
     setSelected(sheet, next);
     renderSelectedItems(sheet);
     closeSelector();
@@ -275,17 +308,26 @@
   function removeSelectedItem(id) {
     const sheet = document.querySelector(".dw-tx-sheet");
     if (!sheet) return;
-    const next = parseSelected(sheet).filter(item => String(item.id) !== String(id));
-    setSelected(sheet, next);
+    setSelected(sheet, parseSelected(sheet).filter(item => String(item.id) !== String(id)));
     renderSelectedItems(sheet);
   }
 
   function updateSplitAmount(input) {
     const sheet = input.closest(".dw-tx-sheet");
     if (!sheet) return;
+    const value = storeCurrencyInput(input);
     const id = input.dataset.dwSplitId;
-    const next = parseSelected(sheet).map(item => String(item.id) === String(id) ? { ...item, amount: Math.max(0, num(input.value)) } : item);
+    const next = parseSelected(sheet).map(item => String(item.id) === String(id) ? { ...item, amount: value } : item);
     setSelected(sheet, next);
+    updateSplitSummary(sheet);
+  }
+
+  function enhanceTransactionSheet(sheet) {
+    if (!sheet) return;
+    if (!sheet.dataset.budgetItems) sheet.dataset.budgetItems = "[]";
+    const total = amountInput(sheet);
+    decorateCurrencyInput(total);
+    if (!sheet.querySelector(".dw-tx-selected-items") && parseSelected(sheet).length) renderSelectedItems(sheet);
     updateSplitSummary(sheet);
   }
 
@@ -297,6 +339,19 @@
     });
   }
 
+  document.addEventListener("focusin", event => {
+    const input = event.target.closest(".dw-currency-input");
+    if (input) showRawCurrency(input);
+  });
+
+  document.addEventListener("focusout", event => {
+    const input = event.target.closest(".dw-currency-input");
+    if (!input) return;
+    if (input.dataset.dwSplitId) updateSplitAmount(input);
+    formatCurrencyInput(input);
+    updateSplitSummary(input.closest(".dw-tx-sheet"));
+  });
+
   document.addEventListener("input", event => {
     const search = event.target.closest("[data-dw-selector-search]");
     if (search) {
@@ -306,12 +361,12 @@
       return;
     }
     const split = event.target.closest("[data-dw-split-id]");
-    if (split) {
-      updateSplitAmount(split);
-      return;
-    }
+    if (split) { updateSplitAmount(split); return; }
     const sheet = event.target.closest(".dw-tx-sheet");
-    if (sheet && event.target.matches('input[type="number"]')) updateSplitSummary(sheet);
+    if (sheet && event.target === amountInput(sheet)) {
+      storeCurrencyInput(event.target);
+      updateSplitSummary(sheet);
+    }
   });
 
   document.addEventListener("click", event => {
@@ -343,11 +398,11 @@
     if (event.target.closest("[data-edp-trans-add]")) {
       setTimeout(() => {
         const sheet = document.querySelector(".dw-tx-sheet");
-        if (sheet && !sheet.dataset.budgetItems) sheet.dataset.budgetItems = "[]";
+        enhanceTransactionSheet(sheet);
         renderSelectedItems(sheet);
         resetTransactionSheetScroll();
       }, 0);
-      setTimeout(resetTransactionSheetScroll, 80);
+      setTimeout(() => enhanceTransactionSheet(document.querySelector(".dw-tx-sheet")), 80);
     }
     const nav = event.target.closest('[data-act="nav"][data-page],.tab-btn[data-page]');
     if (nav?.dataset?.page) saveActivePage(nav.dataset.page);
@@ -358,17 +413,14 @@
     applyPaycheckLayout();
     applyBudgetViewToggle();
     buildNavigation();
-    const sheet = document.querySelector(".dw-tx-sheet");
-    if (sheet) {
-      if (!sheet.dataset.budgetItems) sheet.dataset.budgetItems = "[]";
-      renderSelectedItems(sheet);
-      resetTransactionSheetScroll();
-    }
+    enhanceTransactionSheet(document.querySelector(".dw-tx-sheet"));
   }
 
   window.addEventListener("load", () => {
     initialize();
-    if (readActivePage() === "budget") document.querySelector('.tab-btn[data-page="budget"]')?.click();
+    try {
+      if ((sessionStorage.getItem(PAGE_KEY) || localStorage.getItem(PAGE_KEY)) === "budget") document.querySelector('.tab-btn[data-page="budget"]')?.click();
+    } catch {}
     let attempts = 0;
     const timer = setInterval(() => {
       initialize();
