@@ -99,32 +99,40 @@
         font-weight: 750;
       }
       #tabbar {
+        display: grid !important;
+        grid-template-columns: repeat(7, minmax(0, 1fr)) !important;
+        align-items: end !important;
         overflow: visible !important;
       }
       #tabbar > [data-edp-trans-nav] {
         display: none !important;
       }
+      #tabbar > .tab-btn,
       #tabbar > .dw-nav-plus {
-        position: absolute !important;
-        left: 50% !important;
-        top: -48px !important;
-        transform: translateX(-50%) !important;
+        min-width: 0 !important;
+      }
+      #tabbar > .dw-nav-plus {
+        position: relative !important;
+        left: auto !important;
+        top: -18px !important;
+        transform: none !important;
         z-index: 90 !important;
-        width: 76px !important;
-        height: 76px !important;
-        min-width: 76px !important;
+        width: 64px !important;
+        height: 64px !important;
+        min-width: 64px !important;
+        margin: 0 auto !important;
         border: 0 !important;
         border-radius: 999px !important;
         background: #004b75 !important;
         color: #fff !important;
-        box-shadow: 0 10px 28px rgba(0,35,62,.28) !important;
+        box-shadow: 0 10px 24px rgba(0,35,62,.28) !important;
         display: grid !important;
         place-items: center !important;
         padding: 0 !important;
       }
       #tabbar > .dw-nav-plus span {
         display: block !important;
-        font-size: 3.05rem !important;
+        font-size: 2.75rem !important;
         line-height: .85 !important;
         font-weight: 400 !important;
       }
@@ -134,10 +142,12 @@
       @media (max-width: 560px) {
         #tabbar > .tab-btn {
           min-width: 0 !important;
-          font-size: .72rem !important;
+          padding-left: 1px !important;
+          padding-right: 1px !important;
+          font-size: .66rem !important;
         }
         #tabbar > .tab-btn .tab-icon {
-          font-size: 1.15rem !important;
+          font-size: 1.05rem !important;
         }
       }
     `;
@@ -152,6 +162,8 @@
     if (plus) {
       plus.setAttribute("aria-label", "Add transaction");
       plus.innerHTML = "<span>+</span>";
+      const budget = bar.querySelector('.tab-btn[data-page="budget"]');
+      if (budget && budget.nextElementSibling !== plus) budget.insertAdjacentElement("afterend", plus);
     }
   }
 
