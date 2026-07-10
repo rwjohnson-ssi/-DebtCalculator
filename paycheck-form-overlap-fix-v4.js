@@ -1,7 +1,7 @@
 (() => {
   "use strict";
 
-  const BASE_HELPER = "https://raw.githubusercontent.com/rwjohnson-ssi/-DebtCalculator/761c066f5899b4bb21c3d157/paycheck-form-overlap-fix-v4.js?feature=27";
+  const BASE_HELPER = "https://raw.githubusercontent.com/rwjohnson-ssi/-DebtCalculator/761c066f58989fb45dd749a007ec6db139675cbe/paycheck-form-overlap-fix-v4.js?feature=27";
 
   function ensureTransactionNavigationStyle() {
     if (document.getElementById("dw-transaction-nav-v27")) return;
