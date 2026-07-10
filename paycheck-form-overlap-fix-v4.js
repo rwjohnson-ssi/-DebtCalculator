@@ -1,7 +1,7 @@
 (() => {
   "use strict";
 
-  const BASE_HELPER = "https://raw.githubusercontent.com/rwjohnson-ssi/-DebtCalculator/b11f3a7f87a9c5f294b7bf51a0d495ff3c434ab8/paycheck-form-overlap-fix-v4.js?feature=36";
+  const BASE_HELPER = "https://raw.githubusercontent.com/rwjohnson-ssi/-DebtCalculator/b11f3a7f87a9c5f294b7bf51a0d495ff3c434ab8/paycheck-form-overlap-fix-v4.js?feature=37";
 
   function ensureMonthSelectorAlignmentStyle() {
     ["dw-month-selector-alignment-v31", "dw-month-selector-alignment-v32", "dw-month-selector-alignment-v33"]
@@ -23,15 +23,15 @@
   }
 
   function ensureTransactionPaletteStyle() {
-    ["dw-transaction-palette-v34", "dw-transaction-palette-v35", "dw-transaction-palette-v36"]
+    ["dw-transaction-palette-v34", "dw-transaction-palette-v35", "dw-transaction-palette-v36", "dw-transaction-palette-v37"]
       .forEach(id => document.getElementById(id)?.remove());
 
     const style = document.createElement("style");
-    style.id = "dw-transaction-palette-v36";
+    style.id = "dw-transaction-palette-v37";
     style.textContent = `
       .dw-trans-page,.dw-deleted-page{background:#f7fbfc!important}
       .dw-trans-hero,.dw-deleted-head{background:linear-gradient(135deg,#cdeff4 0%,#eafcfe 100%)!important;color:#0f516b!important;border-bottom:1px solid #b9e3ea!important;box-shadow:0 8px 22px rgba(15,81,107,.10)!important}
-      .dw-trans-title,.dw-trans-select,.dw-deleted-back,.dw-deleted-title{color:#0f516b!important}
+      .dw-trans-title,.dw-deleted-back,.dw-deleted-title{color:#0f516b!important}
       .dw-trans-search{color:#7c8d93!important;border:1px solid #d6e7ea!important;box-shadow:0 8px 20px rgba(15,81,107,.08)!important}
       .dw-trans-wrap,.dw-deleted-body{background:#f7fbfc!important}
       .dw-trans-card,.dw-deleted-card,.dw-deleted-empty{border:1px solid #dce8eb!important;box-shadow:0 10px 26px rgba(15,81,107,.07)!important}
@@ -63,18 +63,27 @@
     page.querySelectorAll(".dw-deleted-back,.dw-deleted-title").forEach(node => node.style.setProperty("color", "#0f516b", "important"));
   }
 
+  function removeUnusedTransactionSelect() {
+    document.querySelectorAll(".dw-trans-page .dw-trans-select").forEach(node => node.remove());
+  }
+
+  function applyDynamicCorrections() {
+    applyDeletedPalette();
+    removeUnusedTransactionSelect();
+  }
+
   fetch(BASE_HELPER, { cache: "no-store" })
     .then(response => {
       if (!response.ok) throw new Error("Unable to load DebtWizard features.");
       return response.text();
     })
     .then(source => {
-      (0, eval)(`${source}\n//# sourceURL=debtwizard-helper-feature-36.js`);
+      (0, eval)(`${source}\n//# sourceURL=debtwizard-helper-feature-37.js`);
       ensureMonthSelectorAlignmentStyle();
       ensureTransactionPaletteStyle();
-      applyDeletedPalette();
+      applyDynamicCorrections();
 
-      new MutationObserver(applyDeletedPalette).observe(document.body, { childList: true, subtree: true });
+      new MutationObserver(applyDynamicCorrections).observe(document.body, { childList: true, subtree: true });
     })
     .catch(error => console.error(error));
 })();
