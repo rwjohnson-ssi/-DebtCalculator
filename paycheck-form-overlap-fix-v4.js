@@ -1,18 +1,20 @@
 (() => {
   "use strict";
 
-  const BASE_HELPER = "https://raw.githubusercontent.com/rwjohnson-ssi/-DebtCalculator/761c066f58989fb45dd749a007ec6db139675cbe/paycheck-form-overlap-fix-v4.js?feature=23";
+  const BASE_HELPER = "https://raw.githubusercontent.com/rwjohnson-ssi/-DebtCalculator/761c066f58989fb45dd749a007ec6db139675cbe/paycheck-form-overlap-fix-v4.js?feature=24";
 
   function ensureTransactionNavigationStyle() {
-    if (document.getElementById("dw-transaction-nav-v23")) return;
+    if (document.getElementById("dw-transaction-nav-v24")) return;
     const style = document.createElement("style");
-    style.id = "dw-transaction-nav-v23";
+    style.id = "dw-transaction-nav-v24";
     style.textContent = `
+      #dw-primary-nav{box-sizing:border-box!important;min-height:78px!important;padding:7px 0 calc(13px + env(safe-area-inset-bottom,0px))!important}
+      #app-shell{padding-bottom:calc(88px + env(safe-area-inset-bottom,0px))!important}
       #dw-primary-nav .dw-nav-transaction{padding:4px 2px!important;gap:3px!important;color:#929da2!important}
       #dw-primary-nav .dw-nav-transaction .tab-icon{width:38px!important;height:38px!important;margin-top:0!important;border-radius:50%!important;background:#004b75!important;color:#fff!important;font-size:1.28rem!important;font-weight:900!important;box-shadow:none!important}
       #dw-primary-nav .dw-nav-transaction span:last-child{color:#929da2!important}
       #dw-primary-nav .dw-nav-transaction.active span:last-child{color:#007f96!important}
-      .dw-trans-page .dw-trans-fab{display:grid!important;place-items:center!important;right:24px!important;bottom:calc(92px + env(safe-area-inset-bottom,0px))!important;z-index:135!important;width:70px!important;height:70px!important;border-radius:50%!important;background:#004b75!important;color:#fff!important;font-size:3rem!important;line-height:1!important;box-shadow:0 10px 28px rgba(0,35,62,.26)!important}
+      .dw-trans-page .dw-trans-fab{display:grid!important;place-items:center!important;right:24px!important;bottom:calc(102px + env(safe-area-inset-bottom,0px))!important;z-index:135!important;width:70px!important;height:70px!important;border-radius:50%!important;background:#004b75!important;color:#fff!important;font-size:3rem!important;line-height:1!important;box-shadow:0 10px 28px rgba(0,35,62,.26)!important}
     `;
     document.head.appendChild(style);
   }
@@ -67,7 +69,7 @@
       return response.text();
     })
     .then(source => {
-      (0, eval)(`${source}\n//# sourceURL=debtwizard-helper-feature-23.js`);
+      (0, eval)(`${source}\n//# sourceURL=debtwizard-helper-feature-24.js`);
       ensureTransactionNavigationStyle();
 
       let attempts = 0;
