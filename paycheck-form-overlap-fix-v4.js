@@ -1,7 +1,7 @@
 (() => {
   "use strict";
 
-  const LEGACY_HELPER = "https://raw.githubusercontent.com/rwjohnson-ssi/-DebtCalculator/1d8106c5816f07c04d4568f6da97aee27a10cff4/paycheck-form-overlap-fix-v4.js?helper=15";
+  const LEGACY_HELPER = "https://raw.githubusercontent.com/rwjohnson-ssi/-DebtCalculator/1d8106c5816f07c04d4568f6da97aee27a10cff4/paycheck-form-overlap-fix-v4.js?helper=16";
 
   const currencyValue = value => {
     const parsed = Number.parseFloat(String(value ?? "").replace(/[^0-9.-]/g, ""));
@@ -17,41 +17,50 @@
     return input instanceof HTMLInputElement && input.classList.contains("dw-tx-split-input");
   }
 
-  function formatCurrencyField(input) {
-    if (!(input instanceof HTMLInputElement) || !input.classList.contains("dw-currency-input")) return;
-    const value = currencyValue(input.value || input.dataset.rawValue);
-    input.dataset.rawValue = value ? value.toFixed(2) : "";
-    input.value = value ? money(value) : "";
+  function editableValue(value) {
+    const amount = currencyValue(value);
+    if (!amount) return "";
+    return String(Number(amount.toFixed(2)));
   }
 
-  function formatAllSplitFields({ includeActive = false } = {}) {
-    const active = document.activeElement;
-    document.querySelectorAll(".dw-tx-split-input.dw-currency-input").forEach(input => {
-      if (!includeActive && input === active) return;
-      formatCurrencyField(input);
+  function setRawSplitValue(input) {
+    if (!isSplitInput(input)) return;
+    const raw = editableValue(input.dataset.rawValue || input.value);
+    input.value = raw;
+    input.dataset.rawValue = raw;
+    requestAnimationFrame(() => {
+      try { input.setSelectionRange(raw.length, raw.length); } catch {}
     });
+  }
+
+  function formatSplitValue(input) {
+    if (!isSplitInput(input)) return;
+    const amount = currencyValue(input.value || input.dataset.rawValue);
+    input.dataset.rawValue = amount ? amount.toFixed(2) : "";
+    input.value = amount ? money(amount) : "";
+  }
+
+  function formatAllSplits() {
+    document.querySelectorAll(".dw-tx-split-input").forEach(formatSplitValue);
   }
 
   function installSplitTypingFix() {
     document.addEventListener("focusin", event => {
       const input = event.target;
       if (!isSplitInput(input)) return;
-      const value = currencyValue(input.dataset.rawValue || input.value);
-      input.value = value ? value.toFixed(2) : "";
-      requestAnimationFrame(() => input.select());
-    }, true);
+      requestAnimationFrame(() => setRawSplitValue(input));
+    });
 
     document.addEventListener("input", event => {
       const input = event.target;
       if (!isSplitInput(input)) return;
-      const value = currencyValue(input.value);
-      input.dataset.rawValue = value ? value.toFixed(2) : "";
+      input.dataset.rawValue = input.value;
     }, true);
 
     document.addEventListener("focusout", event => {
       const input = event.target;
       if (!isSplitInput(input)) return;
-      requestAnimationFrame(() => formatCurrencyField(input));
+      requestAnimationFrame(() => formatSplitValue(input));
     }, true);
 
     document.addEventListener("click", event => {
@@ -59,17 +68,17 @@
       if (!action) return;
       const active = document.activeElement;
       if (isSplitInput(active)) {
-        formatCurrencyField(active);
+        formatSplitValue(active);
         active.blur();
       }
-      requestAnimationFrame(() => formatAllSplitFields({ includeActive: true }));
+      requestAnimationFrame(formatAllSplits);
     }, true);
 
     document.addEventListener("keydown", event => {
       if (event.key !== "Enter") return;
       const input = event.target;
       if (!isSplitInput(input)) return;
-      formatCurrencyField(input);
+      formatSplitValue(input);
       input.blur();
     }, true);
   }
@@ -80,9 +89,9 @@
       return response.text();
     })
     .then(source => {
-      (0, eval)(`${source}\n//# sourceURL=debtwizard-helper-v15.js`);
+      (0, eval)(`${source}\n//# sourceURL=debtwizard-helper-v16.js`);
       installSplitTypingFix();
-      formatAllSplitFields();
+      formatAllSplits();
     })
     .catch(error => {
       console.error(error);
