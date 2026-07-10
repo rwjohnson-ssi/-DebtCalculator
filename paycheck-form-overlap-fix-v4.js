@@ -45,10 +45,10 @@
   }
 
   function addStyles() {
-    if (document.getElementById("debtwizard-ui-fixes-v9")) return;
+    if (document.getElementById("debtwizard-ui-fixes-v10")) return;
     document.querySelectorAll('[id^="debtwizard-ui-fixes-v"]').forEach(node => node.remove());
     const style = document.createElement("style");
-    style.id = "debtwizard-ui-fixes-v9";
+    style.id = "debtwizard-ui-fixes-v10";
     style.textContent = `
       @media (max-width:560px){
         #paycheck-overlay .paycheck-config{display:block!important;padding:16px!important}
@@ -78,9 +78,10 @@
       .dw-tx-grabber{display:none!important}.dw-tx-head-row strong{font-size:1.22rem!important;font-weight:950!important}.dw-tx-link{color:#fff!important;font-weight:850!important}.dw-tx-done{opacity:.72!important}
       .dw-tx-toggle{margin-top:18px!important;padding:4px!important;gap:4px!important;background:rgba(255,255,255,.22)!important;border:1px solid rgba(255,255,255,.32)!important;border-radius:15px!important}
       .dw-tx-toggle button{min-height:44px!important;border-radius:11px!important;color:#fff!important;font-weight:900!important}.dw-tx-toggle button.active{background:#fff!important;color:#087b96!important;box-shadow:0 5px 14px rgba(0,55,76,.18)!important}
-      .dw-tx-body{padding:24px 22px 120px!important}.dw-tx-panel,.dw-tx-budget-row,.dw-tx-note{border:1px solid #dbe8ec!important;border-radius:20px!important;background:#fff!important;box-shadow:0 8px 22px rgba(15,81,107,.07)!important}
+      .dw-tx-body{padding:24px 22px 120px!important}.dw-tx-panel,.dw-tx-budget-row,.dw-tx-note,.dw-tx-selected-items{border:1px solid #dbe8ec!important;border-radius:20px!important;background:#fff!important;box-shadow:0 8px 22px rgba(15,81,107,.07)!important}
       .dw-tx-panel{padding:0 22px!important;margin-bottom:18px!important}.dw-tx-field{min-height:68px!important;border-bottom:1px solid #e5edef!important}.dw-tx-field span,.dw-tx-account strong{color:#183f50!important;font-weight:850!important}.dw-tx-field input{color:#087b96!important;font-weight:800!important}.dw-tx-account small{color:#66777e!important}
       .dw-tx-budget-row{margin-bottom:18px!important;padding:20px 22px!important;color:#183f50!important;font-weight:850!important}.dw-tx-budget-row em{color:#087b96!important}.dw-tx-note{box-sizing:border-box!important;min-height:104px!important;padding:20px 22px!important;color:#183f50!important}
+      .dw-tx-selected-items{margin-bottom:12px!important;padding:0 20px!important}.dw-tx-selected-row{display:grid;grid-template-columns:32px minmax(0,1fr) auto;align-items:center;gap:10px;min-height:62px;border-bottom:1px solid #e5edef}.dw-tx-selected-row:last-child{border-bottom:0}.dw-tx-selected-remove{width:25px;height:25px;border:0;border-radius:50%;background:#d94a42;color:#fff;font-weight:900}.dw-tx-selected-name{color:#183f50;font-weight:850}.dw-tx-selected-status{color:#087b96;font-size:.82rem;font-weight:800}
       .dw-selector{position:fixed;inset:0;z-index:240;background:#f4f7f8;overflow-y:auto;-webkit-overflow-scrolling:touch}
       .dw-selector-head{position:sticky;top:0;z-index:2;padding:calc(14px + env(safe-area-inset-top,0px)) 20px 18px;background:linear-gradient(135deg,#087b96,#27bfd2);color:#fff;box-shadow:0 8px 22px rgba(8,123,150,.18)}
       .dw-selector-top{display:grid;grid-template-columns:54px 1fr 54px;align-items:center;margin-bottom:15px}.dw-selector-back,.dw-selector-done{border:0;background:transparent;color:#fff;font-size:1rem;font-weight:850}.dw-selector-back{text-align:left;font-size:2rem;line-height:1}.dw-selector-done{text-align:right}.dw-selector-title{text-align:center;font-size:1.18rem;font-weight:950}
@@ -131,7 +132,9 @@
     if (budget) bar.insertBefore(transaction, budget);
     let more = bar.querySelector(".dw-nav-more");
     if (!more) {
-      more = document.createElement("button"); more.type = "button"; more.className = "dw-nav-more";
+      more = document.createElement("button");
+      more.type = "button";
+      more.className = "dw-nav-more";
       more.setAttribute("aria-label", "More navigation");
       more.innerHTML = '<span class="tab-icon">•••</span><span>More</span>';
     }
@@ -139,7 +142,11 @@
     return true;
   }
 
-  function closeMoreMenu() { document.querySelector(".dw-more-backdrop")?.remove(); document.querySelector(".dw-more-menu")?.remove(); }
+  function closeMoreMenu() {
+    document.querySelector(".dw-more-backdrop")?.remove();
+    document.querySelector(".dw-more-menu")?.remove();
+  }
+
   function openMoreMenu() {
     closeMoreMenu();
     document.body.insertAdjacentHTML("beforeend", '<div class="dw-more-backdrop" data-dw-more-close></div><div class="dw-more-menu" role="dialog" aria-label="More navigation"><button type="button" data-dw-more-page="strategy"><span class="dw-more-icon">✦</span><span>Payoff Strategy</span><span class="dw-more-arrow">›</span></button><button type="button" data-dw-more-page="plan"><span class="dw-more-icon">▤</span><span>Debt Payoff Plan</span><span class="dw-more-arrow">›</span></button><button type="button" data-dw-more-page="track"><span class="dw-more-icon">✓</span><span>Debt Payment Tracking</span><span class="dw-more-arrow">›</span></button></div>');
@@ -164,34 +171,85 @@
     return Object.entries(groups).map(([key, items]) => ({ title: CATEGORY_LABELS[key] || "Other", items }));
   }
 
-  function closeSelector() { document.querySelector(".dw-selector")?.remove(); }
+  function parseSelected(sheet) {
+    try {
+      const value = JSON.parse(sheet?.dataset.budgetItems || "[]");
+      return Array.isArray(value) ? value : [];
+    } catch { return []; }
+  }
+
+  function renderSelectedItems(sheet) {
+    if (!sheet) return;
+    const selected = parseSelected(sheet);
+    sheet.querySelector(".dw-tx-selected-items")?.remove();
+    const row = sheet.querySelector(".dw-tx-budget-row");
+    if (!row) return;
+    if (!selected.length) {
+      const value = row.querySelector("em");
+      if (value) value.textContent = "Select ›";
+      return;
+    }
+    const rows = selected.map(item => `<div class="dw-tx-selected-row" data-dw-selected-id="${esc(item.id)}"><button type="button" class="dw-tx-selected-remove" data-dw-remove-selected="${esc(item.id)}" aria-label="Remove ${esc(item.name)}">−</button><span class="dw-tx-selected-name">${esc(item.name)}</span><span class="dw-tx-selected-status">Selected</span></div>`).join("");
+    row.insertAdjacentHTML("beforebegin", `<section class="dw-tx-selected-items">${rows}</section>`);
+    const value = row.querySelector("em");
+    if (value) value.textContent = "Add another ›";
+  }
+
+  function closeSelector() {
+    document.querySelector(".dw-selector")?.remove();
+  }
 
   function openSelector() {
     const sheet = document.querySelector(".dw-tx-sheet");
     if (!sheet) return;
     const type = transactionType();
     const budget = currentBudget();
-    const selectedId = sheet.dataset.budgetItemId || "";
+    const selected = parseSelected(sheet);
+    const selectedIds = new Set(selected.map(item => String(item.id)));
     const groups = selectorGroups(type, budget);
     const cards = groups.length ? groups.map(group => {
       const rows = group.items.map(item => {
-        const selected = String(item.id) === selectedId;
-        return `<button type="button" class="dw-selector-item${selected ? " selected" : ""}" data-dw-budget-item="${esc(item.id)}" data-dw-budget-name="${esc(item.name)}"><span class="dw-selector-check">${selected ? "✓" : ""}</span><span class="dw-selector-item-name">${esc(item.name)}</span><span class="dw-selector-amount">${money(itemRemaining(type, item, budget.tracking))}</span></button>`;
+        const isSelected = selectedIds.has(String(item.id));
+        return `<button type="button" class="dw-selector-item${isSelected ? " selected" : ""}" data-dw-budget-item="${esc(item.id)}" data-dw-budget-name="${esc(item.name)}"><span class="dw-selector-check">${isSelected ? "✓" : ""}</span><span class="dw-selector-item-name">${esc(item.name)}</span><span class="dw-selector-amount">${money(itemRemaining(type, item, budget.tracking))}</span></button>`;
       }).join("");
       return `<section class="dw-selector-card" data-dw-selector-group><div class="dw-selector-card-head"><strong>${esc(group.title)}</strong><span>Remaining</span></div>${rows}</section>`;
     }).join("") : '<div class="dw-selector-empty">No budget items are available for this transaction type.</div>';
-    document.body.insertAdjacentHTML("beforeend", `<section class="dw-selector" role="dialog" aria-modal="true" aria-label="Select Budget Item"><header class="dw-selector-head"><div class="dw-selector-top"><button type="button" class="dw-selector-back" data-dw-selector-close>‹</button><div class="dw-selector-title">Select Budget Item</div><button type="button" class="dw-selector-done" data-dw-selector-close>Done</button></div><label class="dw-selector-search"><span>⌕</span><input type="search" placeholder="Search" data-dw-selector-search></label></header><main class="dw-selector-body">${cards}</main></section>`);
+    document.body.insertAdjacentHTML("beforeend", `<section class="dw-selector" role="dialog" aria-modal="true" aria-label="Select Budget Items" data-dw-pending-items='${esc(JSON.stringify(selected))}'><header class="dw-selector-head"><div class="dw-selector-top"><button type="button" class="dw-selector-back" data-dw-selector-cancel>‹</button><div class="dw-selector-title">Select Budget Item(s)</div><button type="button" class="dw-selector-done" data-dw-selector-done>Done</button></div><label class="dw-selector-search"><span>⌕</span><input type="search" placeholder="Search" data-dw-selector-search></label></header><main class="dw-selector-body">${cards}</main></section>`);
   }
 
-  function chooseBudgetItem(button) {
+  function toggleBudgetItem(button) {
+    const selector = button.closest(".dw-selector");
+    if (!selector) return;
+    let pending = [];
+    try { pending = JSON.parse(selector.dataset.dwPendingItems || "[]"); } catch {}
+    if (!Array.isArray(pending)) pending = [];
+    const id = button.dataset.dwBudgetItem || "";
+    const existing = pending.findIndex(item => String(item.id) === String(id));
+    if (existing >= 0) pending.splice(existing, 1);
+    else pending.push({ id, name: button.dataset.dwBudgetName || "Budget item" });
+    selector.dataset.dwPendingItems = JSON.stringify(pending);
+    button.classList.toggle("selected", existing < 0);
+    const check = button.querySelector(".dw-selector-check");
+    if (check) check.textContent = existing < 0 ? "✓" : "";
+  }
+
+  function applySelectorChoices() {
+    const selector = document.querySelector(".dw-selector");
+    const sheet = document.querySelector(".dw-tx-sheet");
+    if (!selector || !sheet) return;
+    let pending = [];
+    try { pending = JSON.parse(selector.dataset.dwPendingItems || "[]"); } catch {}
+    sheet.dataset.budgetItems = JSON.stringify(Array.isArray(pending) ? pending : []);
+    renderSelectedItems(sheet);
+    closeSelector();
+  }
+
+  function removeSelectedItem(id) {
     const sheet = document.querySelector(".dw-tx-sheet");
     if (!sheet) return;
-    sheet.dataset.budgetItemId = button.dataset.dwBudgetItem || "";
-    sheet.dataset.budgetItemName = button.dataset.dwBudgetName || "";
-    const row = sheet.querySelector(".dw-tx-budget-row");
-    const value = row?.querySelector("em");
-    if (value) value.textContent = `${sheet.dataset.budgetItemName} ›`;
-    closeSelector();
+    const next = parseSelected(sheet).filter(item => String(item.id) !== String(id));
+    sheet.dataset.budgetItems = JSON.stringify(next);
+    renderSelectedItems(sheet);
   }
 
   function resetTransactionSheetScroll() {
@@ -215,34 +273,62 @@
     if (view) {
       event.preventDefault();
       try { localStorage.setItem(BUDGET_MODE_KEY, BUDGET_MODES.includes(view.dataset.budgetView) ? view.dataset.budgetView : "planned"); } catch {}
-      applyBudgetViewToggle(); return;
+      applyBudgetViewToggle();
+      return;
     }
     if (event.target.closest(".dw-nav-more")) { event.preventDefault(); openMoreMenu(); return; }
     if (event.target.closest("[data-dw-more-close]")) { event.preventDefault(); closeMoreMenu(); return; }
     const morePage = event.target.closest("[data-dw-more-page]");
     if (morePage) {
-      event.preventDefault(); const page = morePage.dataset.dwMorePage; closeMoreMenu(); saveActivePage(page);
-      document.querySelector(`#tabbar .tab-btn[data-page="${page}"]`)?.click(); return;
+      event.preventDefault();
+      const page = morePage.dataset.dwMorePage;
+      closeMoreMenu();
+      saveActivePage(page);
+      document.querySelector(`#tabbar .tab-btn[data-page="${page}"]`)?.click();
+      return;
     }
     if (event.target.closest(".dw-tx-budget-row")) { event.preventDefault(); openSelector(); return; }
-    if (event.target.closest("[data-dw-selector-close]")) { event.preventDefault(); closeSelector(); return; }
+    if (event.target.closest("[data-dw-selector-cancel]")) { event.preventDefault(); closeSelector(); return; }
+    if (event.target.closest("[data-dw-selector-done]")) { event.preventDefault(); applySelectorChoices(); return; }
     const item = event.target.closest("[data-dw-budget-item]");
-    if (item) { event.preventDefault(); chooseBudgetItem(item); return; }
-    if (event.target.closest("[data-edp-trans-add]")) { setTimeout(resetTransactionSheetScroll, 0); setTimeout(resetTransactionSheetScroll, 80); }
+    if (item) { event.preventDefault(); toggleBudgetItem(item); return; }
+    const remove = event.target.closest("[data-dw-remove-selected]");
+    if (remove) { event.preventDefault(); removeSelectedItem(remove.dataset.dwRemoveSelected); return; }
+    if (event.target.closest("[data-edp-trans-add]")) {
+      setTimeout(() => {
+        const sheet = document.querySelector(".dw-tx-sheet");
+        if (sheet && !sheet.dataset.budgetItems) sheet.dataset.budgetItems = "[]";
+        renderSelectedItems(sheet);
+        resetTransactionSheetScroll();
+      }, 0);
+      setTimeout(resetTransactionSheetScroll, 80);
+    }
     const nav = event.target.closest('[data-act="nav"][data-page],.tab-btn[data-page]');
     if (nav?.dataset?.page) saveActivePage(nav.dataset.page);
   }, true);
 
   function initialize() {
-    addStyles(); applyPaycheckLayout(); applyBudgetViewToggle(); buildNavigation();
-    if (document.querySelector(".dw-tx-root")) resetTransactionSheetScroll();
+    addStyles();
+    applyPaycheckLayout();
+    applyBudgetViewToggle();
+    buildNavigation();
+    const sheet = document.querySelector(".dw-tx-sheet");
+    if (sheet) {
+      if (!sheet.dataset.budgetItems) sheet.dataset.budgetItems = "[]";
+      renderSelectedItems(sheet);
+      resetTransactionSheetScroll();
+    }
   }
 
   window.addEventListener("load", () => {
     initialize();
     if (readActivePage() === "budget") document.querySelector('.tab-btn[data-page="budget"]')?.click();
     let attempts = 0;
-    const timer = setInterval(() => { initialize(); attempts += 1; if (attempts >= 24 || document.querySelector("#tabbar .dw-nav-more")) clearInterval(timer); }, 150);
+    const timer = setInterval(() => {
+      initialize();
+      attempts += 1;
+      if (attempts >= 24 || document.querySelector("#tabbar .dw-nav-more")) clearInterval(timer);
+    }, 150);
   });
 
   initialize();
