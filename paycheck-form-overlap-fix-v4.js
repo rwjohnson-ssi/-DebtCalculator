@@ -237,8 +237,8 @@
     }
 
     const budget = bar.querySelector('.tab-btn[data-page="budget"]');
-    if (budget && transaction.previousElementSibling !== budget) {
-      bar.insertBefore(transaction, budget.nextSibling);
+    if (budget && transaction.nextElementSibling !== budget) {
+      bar.insertBefore(transaction, budget);
     }
 
     let more = bar.querySelector(".dw-nav-more");
