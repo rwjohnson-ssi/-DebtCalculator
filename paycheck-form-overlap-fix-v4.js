@@ -1,7 +1,7 @@
 (() => {
   "use strict";
 
-  const LEGACY_HELPER = "https://raw.githubusercontent.com/rwjohnson-ssi/-DebtCalculator/1d8106c5816f07c04d4568f6da97aee27a10cff4/paycheck-form-overlap-fix-v4.js?helper=18";
+  const LEGACY_HELPER = "https://raw.githubusercontent.com/rwjohnson-ssi/-DebtCalculator/1d8106c5816f07c04d4568f6da97aee27a10cff4/paycheck-form-overlap-fix-v4.js?helper=19";
 
   const currencyValue = value => {
     const parsed = Number.parseFloat(String(value ?? "").replace(/[^0-9.-]/g, ""));
@@ -83,13 +83,8 @@
     }, true);
   }
 
-  function installPersistentNavigation() {
-    const generatedBar = document.getElementById("tabbar");
-    if (!generatedBar || document.getElementById("dw-primary-nav")) return;
-
-    generatedBar.hidden = true;
-    generatedBar.setAttribute("aria-hidden", "true");
-
+  function ensurePrimaryNavigationStyle() {
+    if (document.getElementById("dw-persistent-nav-style")) return;
     const style = document.createElement("style");
     style.id = "dw-persistent-nav-style";
     style.textContent = `
@@ -104,42 +99,64 @@
       #app-shell{padding-bottom:calc(76px + env(safe-area-inset-bottom,0px))}
     `;
     document.head.appendChild(style);
+  }
 
-    const nav = document.createElement("nav");
-    nav.id = "dw-primary-nav";
-    nav.className = "tabbar";
-    nav.setAttribute("aria-label", "Primary navigation");
-    nav.innerHTML = `
-      <button type="button" class="tab-btn" data-dw-page="home"><span class="tab-icon">⌂</span><span>Home</span></button>
-      <button type="button" class="tab-btn" data-dw-page="debts"><span class="tab-icon">◔</span><span>Debts</span></button>
-      <button type="button" class="dw-nav-transaction" data-edp-trans-add aria-label="Add transaction"><span class="tab-icon">+</span><span>Transaction</span></button>
-      <button type="button" class="tab-btn" data-dw-page="budget"><span class="tab-icon">$</span><span>Budget</span></button>
-      <button type="button" class="dw-nav-more" aria-label="More navigation"><span class="tab-icon">•••</span><span>More</span></button>
-    `;
-    document.body.appendChild(nav);
-
-    const syncActive = page => {
-      nav.querySelectorAll("[data-dw-page]").forEach(button => {
-        button.classList.toggle("active", button.dataset.dwPage === page);
-      });
-    };
-
-    nav.addEventListener("click", event => {
-      const pageButton = event.target.closest("[data-dw-page]");
-      if (!pageButton) return;
-      const page = pageButton.dataset.dwPage;
-      const nativeButton = generatedBar.querySelector(`.tab-btn[data-page="${page}"]`);
-      if (nativeButton) nativeButton.click();
-      syncActive(page);
+  function syncPrimaryNavigation(page) {
+    const nav = document.getElementById("dw-primary-nav");
+    if (!nav) return;
+    nav.querySelectorAll("[data-dw-page]").forEach(button => {
+      button.classList.toggle("active", button.dataset.dwPage === page);
     });
+  }
 
+  function installPersistentNavigation() {
+    ensurePrimaryNavigationStyle();
+
+    const generatedBar = document.getElementById("tabbar");
+    if (!generatedBar) return;
+    generatedBar.hidden = true;
+    generatedBar.setAttribute("aria-hidden", "true");
+
+    let nav = document.getElementById("dw-primary-nav");
+    if (!nav) {
+      nav = document.createElement("nav");
+      nav.id = "dw-primary-nav";
+      nav.className = "tabbar";
+      nav.setAttribute("aria-label", "Primary navigation");
+      nav.innerHTML = `
+        <button type="button" class="tab-btn" data-dw-page="home"><span class="tab-icon">⌂</span><span>Home</span></button>
+        <button type="button" class="tab-btn" data-dw-page="debts"><span class="tab-icon">◔</span><span>Debts</span></button>
+        <button type="button" class="dw-nav-transaction" data-edp-trans-add aria-label="Add transaction"><span class="tab-icon">+</span><span>Transaction</span></button>
+        <button type="button" class="tab-btn" data-dw-page="budget"><span class="tab-icon">$</span><span>Budget</span></button>
+        <button type="button" class="dw-nav-more" aria-label="More navigation"><span class="tab-icon">•••</span><span>More</span></button>
+      `;
+      document.body.appendChild(nav);
+    } else if (nav.parentElement !== document.body) {
+      document.body.appendChild(nav);
+    }
+
+    const activePage = generatedBar.querySelector(".tab-btn.active")?.dataset.page || "home";
+    syncPrimaryNavigation(activePage);
+  }
+
+  function installPrimaryNavigationEvents() {
     document.addEventListener("click", event => {
-      const nativeButton = event.target.closest('#tabbar .tab-btn[data-page]');
-      if (nativeButton) syncActive(nativeButton.dataset.page);
-    }, true);
+      const pageButton = event.target.closest("#dw-primary-nav [data-dw-page]");
+      if (pageButton) {
+        const page = pageButton.dataset.dwPage;
+        document.querySelector(`#tabbar .tab-btn[data-page="${page}"]`)?.click();
+        syncPrimaryNavigation(page);
+        return;
+      }
 
-    const initial = generatedBar.querySelector(".tab-btn.active")?.dataset.page || "home";
-    syncActive(initial);
+      const nativeButton = event.target.closest('#tabbar .tab-btn[data-page]');
+      if (nativeButton) syncPrimaryNavigation(nativeButton.dataset.page);
+
+      if (event.target.closest(".dw-tx-done.dw-save-ready")) {
+        requestAnimationFrame(installPersistentNavigation);
+        setTimeout(installPersistentNavigation, 120);
+      }
+    }, true);
   }
 
   fetch(LEGACY_HELPER, { cache: "no-store" })
@@ -148,14 +165,16 @@
       return response.text();
     })
     .then(source => {
-      (0, eval)(`${source}\n//# sourceURL=debtwizard-helper-v18.js`);
+      (0, eval)(`${source}\n//# sourceURL=debtwizard-helper-v19.js`);
       installSplitTypingFix();
+      installPrimaryNavigationEvents();
       installPersistentNavigation();
       formatAllSplits();
     })
     .catch(error => {
       console.error(error);
       installSplitTypingFix();
+      installPrimaryNavigationEvents();
       installPersistentNavigation();
     });
 })();
