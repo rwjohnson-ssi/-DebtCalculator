@@ -8,12 +8,14 @@
   const money = new Intl.NumberFormat("en-US", { style: "currency", currency: "USD" });
   const value = input => Number.isFinite(Number.parseFloat(input)) ? Number.parseFloat(input) : 0;
   const cents = input => Math.round((value(input) + Number.EPSILON) * 100) / 100;
+  const currencyValue = input => Math.max(0, cents(String(input ?? "").replace(/[^0-9.-]/g, "")));
   const esc = input => String(input ?? "").replace(/[&<>'"]/g, char => ({ "&":"&amp;", "<":"&lt;", ">":"&gt;", "'":"&#39;", '"':"&quot;" }[char]));
 
   function injectStyles() {
-    if (document.getElementById("debtwizard-transaction-detail-styles")) return;
+    if (document.getElementById("debtwizard-transaction-detail-styles-v2")) return;
+    document.getElementById("debtwizard-transaction-detail-styles")?.remove();
     const style = document.createElement("style");
-    style.id = "debtwizard-transaction-detail-styles";
+    style.id = "debtwizard-transaction-detail-styles-v2";
     style.textContent = `
       .transaction-detail-overlay { position:fixed; z-index:500; inset:0; display:flex; align-items:flex-end; background:rgba(27,48,56,.48); }
       .transaction-detail-sheet { width:min(100%,680px); max-height:91vh; overflow:auto; padding:21px 26px calc(27px + env(safe-area-inset-bottom,0px)); border-radius:28px 28px 0 0; background:#fff; box-shadow:0 -18px 46px rgba(23,51,61,.2); }
@@ -36,6 +38,8 @@
       .transaction-tracker-link strong { color:#168aa6; font-weight:850; }
       .detail-transactions-clickable .transaction-row { cursor:pointer; }
       .detail-transactions-clickable .transaction-row:active { background:#f8fcfd; }
+      .dw-tx-done.dw-save-ready { opacity:1!important; cursor:pointer; pointer-events:auto; }
+      .dw-tx-done:not(.dw-save-ready) { opacity:.55!important; pointer-events:none; }
       @media (min-width:560px) { .transaction-detail-overlay { align-items:center; justify-content:center; padding:20px; } .transaction-detail-sheet { border-radius:25px; } }
       @media (max-width:390px) { .transaction-detail-sheet { padding-left:20px; padding-right:20px; } .transaction-detail-summary { gap:12px; } .transaction-summary-value { font-size:1.32rem; } .transaction-summary-date { font-size:1.08rem; } .transaction-breakdown { padding:14px 17px; } }
     `;
@@ -216,6 +220,106 @@
     return !!screen.querySelector(".detail-title") && activeTab === "Transactions";
   }
 
+  function transactionSheetData(sheet) {
+    if (!sheet) return null;
+    const type = sheet.querySelector('.dw-tx-toggle [data-edp-trans-type="income"].active') ? "income" : "expense";
+    const fields = [...sheet.querySelectorAll(".dw-tx-field")];
+    const field = label => fields.find(item => item.querySelector("span")?.textContent?.trim() === label)?.querySelector("input");
+    const amountInput = field("Amount");
+    const partyInput = field(type === "income" ? "Source" : "Merchant");
+    const dateInput = field("Date");
+    let allocations = [];
+    try { allocations = JSON.parse(sheet.dataset.budgetItems || "[]"); } catch {}
+    allocations = Array.isArray(allocations) ? allocations.map(item => ({ id:String(item.id || ""), name:String(item.name || "Budget item"), amount:currencyValue(item.amount) })).filter(item => item.id && item.amount > .004) : [];
+    return {
+      type,
+      date: /^\d{4}-\d{2}-\d{2}$/.test(dateInput?.value || "") ? dateInput.value : new Date().toISOString().slice(0,10),
+      amount: currencyValue(amountInput?.dataset.rawValue || amountInput?.value),
+      party: String(partyInput?.value || "").trim(),
+      note: String(sheet.querySelector(".dw-tx-note")?.value || "").trim(),
+      allocations
+    };
+  }
+
+  function transactionReady(sheet) {
+    const data = transactionSheetData(sheet);
+    if (!data || data.amount <= .004 || !data.allocations.length) return false;
+    return Math.abs(data.amount - data.allocations.reduce((sum, item) => sum + item.amount, 0)) <= .004;
+  }
+
+  function refreshTransactionDone(sheet = document.querySelector(".dw-tx-sheet")) {
+    const done = sheet?.querySelector(".dw-tx-done");
+    if (!done) return;
+    const ready = transactionReady(sheet);
+    done.classList.toggle("dw-save-ready", ready);
+    done.setAttribute("role", "button");
+    done.setAttribute("tabindex", ready ? "0" : "-1");
+    done.setAttribute("aria-disabled", ready ? "false" : "true");
+  }
+
+  function saveBudgetTransaction(sheet) {
+    const data = transactionSheetData(sheet);
+    if (!data || !transactionReady(sheet)) return false;
+    const state = getState() || {};
+    state.settings = state.settings && typeof state.settings === "object" ? state.settings : {};
+    state.settings.monthlyBudgets = state.settings.monthlyBudgets && typeof state.settings.monthlyBudgets === "object" ? state.settings.monthlyBudgets : {};
+    const month = data.date.slice(0, 7);
+    const budget = state.settings.monthlyBudgets[month] && typeof state.settings.monthlyBudgets[month] === "object"
+      ? state.settings.monthlyBudgets[month]
+      : (state.settings.monthlyBudgets[month] = { incomeSources:{}, budgetCategories:{}, incomeItems:[], bills:[], transactions:[], schedule:{ buffer:0, income:{}, budget:{} } });
+    budget.transactions = Array.isArray(budget.transactions) ? budget.transactions : [];
+    state.settings.budgetTracking = state.settings.budgetTracking && typeof state.settings.budgetTracking === "object" ? state.settings.budgetTracking : {};
+    const tracking = state.settings.budgetTracking[month] && typeof state.settings.budgetTracking[month] === "object" ? state.settings.budgetTracking[month] : (state.settings.budgetTracking[month] = {});
+    const id = `tx-${Date.now().toString(36)}-${Math.random().toString(36).slice(2,8)}`;
+    budget.transactions.push({
+      id,
+      type:data.type,
+      date:data.date,
+      amount:data.amount,
+      merchant:data.type === "expense" ? (data.party || "Expense") : "",
+      source:data.type === "income" ? (data.party || "Income") : "",
+      budgetItemId:data.allocations.length === 1 ? data.allocations[0].id : "",
+      budgetItemName:data.allocations.length === 1 ? data.allocations[0].name : data.allocations.map(item => item.name).join(", "),
+      allocations:data.allocations.map(item => ({ budgetItemId:item.id, budgetItemName:item.name, amount:item.amount })),
+      note:data.note,
+      createdAt:new Date().toISOString()
+    });
+    data.allocations.forEach(item => {
+      const key = `${data.type === "income" ? "income" : "expense"}:${item.id}`;
+      tracking[key] = cents(value(tracking[key]) + item.amount);
+    });
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+    document.querySelector(".dw-selector")?.remove();
+    document.querySelector(".dw-tx-root")?.remove();
+    try { localStorage.setItem("debtwizard-active-page", "budget"); sessionStorage.setItem("debtwizard-active-page", "budget"); } catch {}
+    document.querySelector('#tabbar .tab-btn[data-page="budget"]')?.click();
+    return true;
+  }
+
+  document.addEventListener("input", event => {
+    if (event.target.closest(".dw-tx-sheet")) setTimeout(() => refreshTransactionDone(), 0);
+  }, true);
+  document.addEventListener("change", event => {
+    if (event.target.closest(".dw-tx-sheet")) setTimeout(() => refreshTransactionDone(), 0);
+  }, true);
+  document.addEventListener("click", event => {
+    const done = event.target.closest(".dw-tx-done.dw-save-ready");
+    if (done) {
+      event.preventDefault();
+      event.stopPropagation();
+      event.stopImmediatePropagation();
+      saveBudgetTransaction(done.closest(".dw-tx-sheet"));
+      return;
+    }
+    if (event.target.closest("[data-dw-selector-done],[data-dw-remove-selected],[data-dw-budget-item],[data-edp-trans-add]")) setTimeout(() => refreshTransactionDone(), 40);
+  }, true);
+  document.addEventListener("keydown", event => {
+    if ((event.key === "Enter" || event.key === " ") && event.target.closest(".dw-tx-done.dw-save-ready")) {
+      event.preventDefault();
+      saveBudgetTransaction(event.target.closest(".dw-tx-sheet"));
+    }
+  }, true);
+
   screen.addEventListener("click", event => {
     if (!isDebtTransactionsScreen()) return;
     const row = event.target.closest(".transaction-row");
@@ -253,7 +357,10 @@
   }, true);
 
   new MutationObserver(() => {
-    if (!isDebtTransactionsScreen()) return;
-    screen.classList.add("detail-transactions-clickable");
-  }).observe(screen, { childList:true, subtree:true });
+    if (isDebtTransactionsScreen()) screen.classList.add("detail-transactions-clickable");
+    refreshTransactionDone();
+  }).observe(document.body, { childList:true, subtree:true });
+
+  injectStyles();
+  refreshTransactionDone();
 })();
