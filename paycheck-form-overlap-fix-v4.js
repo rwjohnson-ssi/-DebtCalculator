@@ -98,8 +98,61 @@
         text-align: center;
         font-weight: 750;
       }
+      #tabbar {
+        overflow: visible !important;
+      }
+      #tabbar > [data-edp-trans-nav] {
+        display: none !important;
+      }
+      #tabbar > .dw-nav-plus {
+        position: absolute !important;
+        left: 50% !important;
+        top: -48px !important;
+        transform: translateX(-50%) !important;
+        z-index: 90 !important;
+        width: 76px !important;
+        height: 76px !important;
+        min-width: 76px !important;
+        border: 0 !important;
+        border-radius: 999px !important;
+        background: #004b75 !important;
+        color: #fff !important;
+        box-shadow: 0 10px 28px rgba(0,35,62,.28) !important;
+        display: grid !important;
+        place-items: center !important;
+        padding: 0 !important;
+      }
+      #tabbar > .dw-nav-plus span {
+        display: block !important;
+        font-size: 3.05rem !important;
+        line-height: .85 !important;
+        font-weight: 400 !important;
+      }
+      #tabbar > .dw-nav-plus small {
+        display: none !important;
+      }
+      @media (max-width: 560px) {
+        #tabbar > .tab-btn {
+          min-width: 0 !important;
+          font-size: .72rem !important;
+        }
+        #tabbar > .tab-btn .tab-icon {
+          font-size: 1.15rem !important;
+        }
+      }
     `;
     document.head.appendChild(style);
+  }
+
+  function cleanTransactionNav() {
+    const bar = document.getElementById("tabbar");
+    if (!bar) return;
+    bar.querySelectorAll("[data-edp-trans-nav]").forEach(node => node.remove());
+    const plus = bar.querySelector(".dw-nav-plus[data-edp-trans-add]");
+    if (plus) {
+      plus.setAttribute("aria-label", "Add transaction");
+      plus.innerHTML = "<span>+</span>";
+    }
   }
 
   function saveActivePage(page) {
@@ -162,6 +215,7 @@
 
   function applyPaycheckLayout() {
     addStyles();
+    cleanTransactionNav();
     const form = document.getElementById("modal-root")?.querySelector("#paycheck-form");
     const pair = form?.querySelector(".paycheck-two");
     if (pair) pair.classList.add("paycheck-fields-stacked-mobile");
@@ -191,6 +245,7 @@
       applyPaycheckLayout();
       restoreBudgetPage();
       applyBudgetViewToggle();
+      cleanTransactionNav();
       tries += 1;
       if (tries > 24 || (isBudgetVisible() && document.querySelector(".budget-view-toggle"))) clearInterval(timer);
     }, 150);
@@ -200,5 +255,7 @@
   setTimeout(() => {
     applyPaycheckLayout();
     applyBudgetViewToggle();
+    cleanTransactionNav();
   }, 0);
+  new MutationObserver(cleanTransactionNav).observe(document.documentElement, { childList: true, subtree: true });
 })();
