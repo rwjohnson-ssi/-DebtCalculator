@@ -6,10 +6,11 @@
   const BUDGET_MODES = ["planned", "spent", "remaining"];
 
   function addStyles() {
-    if (document.getElementById("debtwizard-ui-fixes-v7")) return;
+    if (document.getElementById("debtwizard-ui-fixes-v8")) return;
+    document.getElementById("debtwizard-ui-fixes-v7")?.remove();
     document.getElementById("debtwizard-ui-fixes-v6")?.remove();
     const style = document.createElement("style");
-    style.id = "debtwizard-ui-fixes-v7";
+    style.id = "debtwizard-ui-fixes-v8";
     style.textContent = `
       @media (max-width: 560px) {
         #paycheck-overlay .paycheck-config { display:block!important; padding:16px!important; }
@@ -64,7 +65,6 @@
       }
       #tabbar > .dw-nav-transaction span:last-child { color:#007f96; }
 
-      /* Match More exactly to the native Home and Debts tab geometry. */
       #tabbar > .dw-nav-more {
         appearance:none; border:0; background:transparent; color:#96a0a4;
         display:grid!important; grid-template-rows:26px 16px!important;
@@ -79,6 +79,7 @@
       }
       #tabbar > .dw-nav-more span:last-child {
         display:block; margin:0; line-height:1!important;
+        position:relative; top:-3px;
       }
 
       .dw-more-backdrop { position:fixed; inset:0; z-index:180; background:rgba(8,22,29,.35); }
