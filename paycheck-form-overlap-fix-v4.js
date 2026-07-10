@@ -1,434 +1,78 @@
 (() => {
   "use strict";
 
-  const STORE = "debt-calculator-v2";
-  const PAGE_KEY = "debtwizard-active-page";
-  const BUDGET_MODE_KEY = "debtwizard-budget-mode";
-  const BUDGET_MODES = ["planned", "spent", "remaining"];
-  const CATEGORY_LABELS = {
-    housing: "Housing", utilities: "Utilities", food: "Food",
-    transportation: "Transportation", insurance: "Insurance",
-    subscriptions: "Subscriptions", savings: "Savings", giving: "Giving",
-    personal: "Personal", other: "Other"
+  const LEGACY_HELPER = "https://raw.githubusercontent.com/rwjohnson-ssi/-DebtCalculator/1d8106c5816f07c04d4568f6da97aee27a10cff4/paycheck-form-overlap-fix-v4.js";
+
+  const currencyValue = value => {
+    const parsed = Number.parseFloat(String(value ?? "").replace(/[^0-9.-]/g, ""));
+    return Number.isFinite(parsed) ? Math.max(0, parsed) : 0;
   };
 
-  const num = value => Number.isFinite(Number.parseFloat(value)) ? Number.parseFloat(value) : 0;
-  const currencyValue = value => Math.max(0, num(String(value ?? "").replace(/[^0-9.-]/g, "")));
-  const money = value => new Intl.NumberFormat("en-US", { style: "currency", currency: "USD" }).format(currencyValue(value));
-  const esc = value => String(value ?? "").replace(/[&<>"']/g, char => ({ "&":"&amp;", "<":"&lt;", ">":"&gt;", '"':"&quot;", "'":"&#39;" }[char]));
+  const money = value => new Intl.NumberFormat("en-US", {
+    style: "currency",
+    currency: "USD"
+  }).format(currencyValue(value));
 
-  function loadState() {
-    try { return JSON.parse(localStorage.getItem(STORE)) || {}; }
-    catch { return {}; }
-  }
+  function formatActiveCurrencyField() {
+    const input = document.activeElement;
+    if (!(input instanceof HTMLInputElement) || !input.classList.contains("dw-currency-input")) return;
 
-  function selectedMonth() {
-    const title = document.querySelector(".hero-title")?.textContent?.trim() || "";
-    const months = { january:"01",february:"02",march:"03",april:"04",may:"05",june:"06",july:"07",august:"08",september:"09",october:"10",november:"11",december:"12" };
-    const match = title.match(/^([A-Za-z]+)\s+(20\d{2})$/);
-    if (match && months[match[1].toLowerCase()]) return `${match[2]}-${months[match[1].toLowerCase()]}`;
-    const now = new Date();
-    return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
-  }
-
-  function currentBudget() {
-    const state = loadState();
-    const month = selectedMonth();
-    const settings = state.settings && typeof state.settings === "object" ? state.settings : {};
-    const monthly = settings.monthlyBudgets && typeof settings.monthlyBudgets === "object" ? settings.monthlyBudgets : {};
-    const budget = monthly[month] || {};
-    return {
-      month,
-      incomeItems: Array.isArray(budget.incomeItems) ? budget.incomeItems : [],
-      bills: Array.isArray(budget.bills) ? budget.bills : [],
-      tracking: settings.budgetTracking?.[month] || {}
-    };
-  }
-
-  function addStyles() {
-    if (document.getElementById("debtwizard-ui-fixes-v12")) return;
-    document.querySelectorAll('[id^="debtwizard-ui-fixes-v"]').forEach(node => node.remove());
-    const style = document.createElement("style");
-    style.id = "debtwizard-ui-fixes-v12";
-    style.textContent = `
-      @media (max-width:560px){
-        #paycheck-overlay .paycheck-config{display:block!important;padding:16px!important}
-        #paycheck-overlay .paycheck-two,#paycheck-overlay .paycheck-two>.paycheck-field{display:grid!important;grid-template-columns:minmax(0,1fr)!important;gap:14px!important;width:100%!important;min-width:0!important}
-        #paycheck-overlay .paycheck-two input,#paycheck-overlay .paycheck-two select,#paycheck-overlay input[type=date]{width:100%!important;min-width:0!important;max-width:100%!important;box-sizing:border-box!important}
-      }
-      .budget-view-toggle{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:4px;margin:0 0 14px;padding:4px;border:1px solid #cfe9ee;border-radius:15px;background:#eaf9fc}
-      .budget-view-toggle button{min-height:40px;border:0;border-radius:12px;background:transparent;color:#0f7893;font-size:.94rem;font-weight:900}
-      .budget-view-toggle button.active{background:#20bfd7;color:#fff;box-shadow:0 6px 14px rgba(32,191,215,.22)}
-      .budget-view-note{margin:-5px 0 14px;color:#65747a;font-size:.82rem;line-height:1.35;text-align:center;font-weight:750}
-      #tabbar{display:grid!important;grid-template-columns:repeat(5,minmax(0,1fr))!important;overflow:visible!important}
-      #tabbar>.tab-btn[data-page=strategy],#tabbar>.tab-btn[data-page=plan],#tabbar>.tab-btn[data-page=track],#tabbar>[data-edp-trans-nav],#tabbar>.dw-nav-plus{display:none!important}
-      #tabbar>.dw-nav-transaction{appearance:none;border:0;background:transparent;color:#8d989e;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;min-width:0;padding:7px 2px calc(7px + env(safe-area-inset-bottom,0px));font:inherit;font-size:.72rem;font-weight:800}
-      #tabbar>.dw-nav-transaction .tab-icon{display:grid;place-items:center;width:54px;height:54px;margin-top:-22px;border-radius:50%;background:#004b75;color:#fff;box-shadow:0 7px 18px rgba(0,35,62,.25);font-size:2.2rem;line-height:1;font-weight:400}
-      #tabbar>.dw-nav-transaction span:last-child{color:#007f96}
-      #tabbar>.dw-nav-more{appearance:none;border:0;background:transparent;color:#96a0a4;display:grid!important;grid-template-rows:26px 16px!important;justify-items:center!important;align-items:center!important;gap:0!important;min-width:0;padding:3px 0!important;font:inherit;font-size:.71rem!important;line-height:1!important;font-weight:750!important}
-      #tabbar>.dw-nav-more .tab-icon{display:block!important;width:auto!important;height:auto!important;margin:0!important;font-size:1.43rem!important;line-height:1!important}
-      #tabbar>.dw-nav-more span:last-child{display:block;margin:0;line-height:1!important;position:relative;top:-3px}
-      .dw-more-backdrop{position:fixed;inset:0;z-index:180;background:rgba(8,22,29,.35)}
-      .dw-more-menu{position:fixed;right:14px;bottom:calc(82px + env(safe-area-inset-bottom,0px));z-index:181;width:min(260px,calc(100vw - 28px));padding:10px;border-radius:20px;background:#fff;box-shadow:0 18px 50px rgba(0,35,62,.25)}
-      .dw-more-menu button{width:100%;min-height:58px;border:0;border-bottom:1px solid #e7ecee;background:transparent;display:grid;grid-template-columns:38px 1fr auto;align-items:center;gap:10px;padding:8px 12px;color:#24323a;text-align:left;font:inherit;font-weight:850}
-      .dw-more-menu button:last-child{border-bottom:0}.dw-more-icon,.dw-more-arrow{color:#0f7893}.dw-more-arrow{font-size:1.5rem}
-      .dw-tx-root{position:fixed!important;inset:0!important;width:100%!important;height:100dvh!important;overflow:hidden!important;background:#eefbfe!important}
-      .dw-tx-backdrop{background:rgba(0,55,76,.34)!important}
-      .dw-tx-sheet{position:absolute!important;inset:0!important;width:100%!important;height:100dvh!important;max-height:none!important;overflow-y:auto!important;overscroll-behavior:contain!important;border-radius:0!important;background:linear-gradient(180deg,#dff8fc 0,#f7fcfd 230px,#f7fcfd 100%)!important;box-shadow:none!important;padding-bottom:env(safe-area-inset-bottom,0px)!important;-webkit-overflow-scrolling:touch!important}
-      .dw-tx-sheet-head{position:sticky!important;top:0!important;z-index:3!important;border-radius:0!important;padding:calc(14px + env(safe-area-inset-top,0px)) 24px 22px!important;background:linear-gradient(135deg,#087b96,#27bfd2)!important;color:#fff!important;box-shadow:0 8px 22px rgba(8,123,150,.18)!important}
-      .dw-tx-grabber{display:none!important}.dw-tx-head-row strong{font-size:1.22rem!important;font-weight:950!important}.dw-tx-link{color:#fff!important;font-weight:850!important}.dw-tx-done{opacity:.72!important}
-      .dw-tx-toggle{margin-top:18px!important;padding:4px!important;gap:4px!important;background:rgba(255,255,255,.22)!important;border:1px solid rgba(255,255,255,.32)!important;border-radius:15px!important}
-      .dw-tx-toggle button{min-height:44px!important;border-radius:11px!important;color:#fff!important;font-weight:900!important}.dw-tx-toggle button.active{background:#fff!important;color:#087b96!important;box-shadow:0 5px 14px rgba(0,55,76,.18)!important}
-      .dw-tx-body{padding:24px 22px 120px!important}.dw-tx-panel,.dw-tx-budget-row,.dw-tx-note,.dw-tx-selected-items{border:1px solid #dbe8ec!important;border-radius:20px!important;background:#fff!important;box-shadow:0 8px 22px rgba(15,81,107,.07)!important}
-      .dw-tx-panel{padding:0 22px!important;margin-bottom:18px!important}.dw-tx-field{min-height:68px!important;border-bottom:1px solid #e5edef!important}.dw-tx-field span,.dw-tx-account strong{color:#183f50!important;font-weight:850!important}.dw-tx-field input{color:#087b96!important;font-weight:800!important}.dw-tx-account small{color:#66777e!important}
-      .dw-tx-budget-row{margin-bottom:18px!important;padding:20px 22px!important;color:#183f50!important;font-weight:850!important}.dw-tx-budget-row em{color:#087b96!important}.dw-tx-note{box-sizing:border-box!important;min-height:104px!important;padding:20px 22px!important;color:#183f50!important}
-      .dw-currency-input{border:0!important;outline:0!important;background:transparent!important;text-align:right!important;color:#087b96!important;font:inherit!important;font-weight:850!important;font-size:1rem!important}
-      .dw-tx-selected-items{margin-bottom:0!important;padding:0 20px!important;border-radius:20px 20px 0 0!important}.dw-tx-selected-row{display:grid;grid-template-columns:32px minmax(0,1fr) 118px;align-items:center;gap:10px;min-height:66px;border-bottom:1px solid #e5edef}.dw-tx-selected-row:last-child{border-bottom:0}.dw-tx-selected-remove{width:25px;height:25px;border:0;border-radius:50%;background:#d94a42;color:#fff;font-weight:900}.dw-tx-selected-name{color:#183f50;font-weight:850}.dw-tx-split-input{width:100%;min-width:0;padding:12px 4px!important;border-radius:8px!important;background:#f5fafb!important}.dw-tx-split-input:focus{background:#fff!important;box-shadow:inset 0 0 0 2px #20bfd7!important}.dw-tx-split-summary{margin:0 0 12px;padding:14px 20px;border-radius:0 0 20px 20px;background:#004b75;color:#fff;text-align:center;font-weight:850;box-shadow:0 8px 22px rgba(0,75,117,.16)}.dw-tx-split-summary.over{background:#b8443d}.dw-tx-split-summary.complete{background:#087b96}.dw-tx-split-summary strong{font-size:1.05rem}
-      .dw-selector{position:fixed;inset:0;z-index:240;background:#f4f7f8;overflow-y:auto;-webkit-overflow-scrolling:touch}
-      .dw-selector-head{position:sticky;top:0;z-index:2;padding:calc(14px + env(safe-area-inset-top,0px)) 20px 18px;background:linear-gradient(135deg,#087b96,#27bfd2);color:#fff;box-shadow:0 8px 22px rgba(8,123,150,.18)}
-      .dw-selector-top{display:grid;grid-template-columns:54px 1fr 54px;align-items:center;margin-bottom:15px}.dw-selector-back,.dw-selector-done{border:0;background:transparent;color:#fff;font-size:1rem;font-weight:850}.dw-selector-back{text-align:left;font-size:2rem;line-height:1}.dw-selector-done{text-align:right}.dw-selector-title{text-align:center;font-size:1.18rem;font-weight:950}
-      .dw-selector-search{display:flex;align-items:center;gap:9px;background:#fff;border-radius:12px;padding:11px 13px;color:#8c999e}.dw-selector-search input{width:100%;border:0;outline:0;background:transparent;font-size:1rem;color:#263137}
-      .dw-selector-body{padding:24px 20px 90px}.dw-selector-card{background:#fff;border:1px solid #e0e9ec;border-radius:20px;padding:18px 20px;margin-bottom:18px;box-shadow:0 8px 22px rgba(15,81,107,.06)}
-      .dw-selector-card-head{display:flex;justify-content:space-between;align-items:center;gap:12px;margin-bottom:10px;color:#405057}.dw-selector-card-head strong{font-size:1.08rem}.dw-selector-item{width:100%;border:0;border-top:1px solid #edf1f2;background:transparent;display:grid;grid-template-columns:34px minmax(0,1fr) auto;align-items:center;gap:12px;padding:15px 0;text-align:left;color:#20282d;font-size:1rem}.dw-selector-item:first-of-type{border-top:0}.dw-selector-check{width:28px;height:28px;border:2px solid #7a888e;border-radius:6px;display:grid;place-items:center;color:#fff}.dw-selector-item.selected .dw-selector-check{background:#087b96;border-color:#087b96}.dw-selector-item-name{font-weight:800}.dw-selector-amount{font-weight:800;white-space:nowrap}.dw-selector-empty{padding:30px;text-align:center;color:#728087}
-    `;
-    document.head.appendChild(style);
-  }
-
-  function saveActivePage(page) {
-    if (!page) return;
-    try { localStorage.setItem(PAGE_KEY, page); sessionStorage.setItem(PAGE_KEY, page); } catch {}
-  }
-
-  function applyBudgetViewToggle() {
-    const form = document.getElementById("budget-form");
-    if (!form) return;
-    if (!form.querySelector(".budget-view-toggle")) form.insertAdjacentHTML("afterbegin", '<div class="budget-view-toggle" role="tablist" aria-label="Budget view"><button type="button" data-budget-view="planned">Planned</button><button type="button" data-budget-view="spent">Spent</button><button type="button" data-budget-view="remaining">Remaining</button></div><p class="budget-view-note"></p>');
-    let active = "planned";
-    try { const value = localStorage.getItem(BUDGET_MODE_KEY) || "planned"; active = BUDGET_MODES.includes(value) ? value : "planned"; } catch {}
-    form.querySelectorAll("[data-budget-view]").forEach(button => button.classList.toggle("active", button.dataset.budgetView === active));
-  }
-
-  function applyPaycheckLayout() {
-    document.getElementById("modal-root")?.querySelector("#paycheck-form .paycheck-two")?.classList.add("paycheck-fields-stacked-mobile");
-  }
-
-  function buildNavigation() {
-    const bar = document.getElementById("tabbar");
-    if (!bar) return false;
-    bar.querySelectorAll("[data-edp-trans-nav]").forEach(node => node.remove());
-    let transaction = bar.querySelector(".dw-nav-transaction");
-    if (!transaction) {
-      transaction = document.createElement("button");
-      transaction.type = "button";
-      transaction.className = "dw-nav-transaction";
-      transaction.setAttribute("data-edp-trans-add", "");
-      transaction.setAttribute("aria-label", "Add transaction");
-      transaction.innerHTML = '<span class="tab-icon">+</span><span>Transaction</span>';
-    }
-    const budget = bar.querySelector('.tab-btn[data-page="budget"]');
-    if (budget) bar.insertBefore(transaction, budget);
-    let more = bar.querySelector(".dw-nav-more");
-    if (!more) {
-      more = document.createElement("button");
-      more.type = "button";
-      more.className = "dw-nav-more";
-      more.setAttribute("aria-label", "More navigation");
-      more.innerHTML = '<span class="tab-icon">•••</span><span>More</span>';
-    }
-    bar.appendChild(more);
-    return true;
-  }
-
-  function closeMoreMenu() {
-    document.querySelector(".dw-more-backdrop")?.remove();
-    document.querySelector(".dw-more-menu")?.remove();
-  }
-
-  function openMoreMenu() {
-    closeMoreMenu();
-    document.body.insertAdjacentHTML("beforeend", '<div class="dw-more-backdrop" data-dw-more-close></div><div class="dw-more-menu" role="dialog" aria-label="More navigation"><button type="button" data-dw-more-page="strategy"><span class="dw-more-icon">✦</span><span>Payoff Strategy</span><span class="dw-more-arrow">›</span></button><button type="button" data-dw-more-page="plan"><span class="dw-more-icon">▤</span><span>Debt Payoff Plan</span><span class="dw-more-arrow">›</span></button><button type="button" data-dw-more-page="track"><span class="dw-more-icon">✓</span><span>Debt Payment Tracking</span><span class="dw-more-arrow">›</span></button></div>');
-  }
-
-  function transactionType() {
-    return document.querySelector('.dw-tx-toggle [data-edp-trans-type="income"].active') ? "income" : "expense";
-  }
-
-  function amountInput(sheet) {
-    return [...(sheet?.querySelectorAll(".dw-tx-field") || [])]
-      .find(field => field.querySelector("span")?.textContent?.trim() === "Amount")
-      ?.querySelector("input") || null;
-  }
-
-  function decorateCurrencyInput(input) {
-    if (!input || input.dataset.currencyReady === "1") return;
-    input.dataset.currencyReady = "1";
-    input.type = "text";
-    input.inputMode = "decimal";
-    input.autocomplete = "off";
-    input.classList.add("dw-currency-input");
-    const initial = currencyValue(input.value);
-    input.dataset.rawValue = initial ? initial.toFixed(2) : "";
-    input.value = initial ? money(initial) : "";
-  }
-
-  function showRawCurrency(input) {
-    if (!input?.classList.contains("dw-currency-input")) return;
-    const value = currencyValue(input.dataset.rawValue || input.value);
-    input.value = value ? value.toFixed(2) : "";
-    requestAnimationFrame(() => input.select());
-  }
-
-  function storeCurrencyInput(input) {
-    if (!input?.classList.contains("dw-currency-input")) return 0;
-    const value = currencyValue(input.value);
+    const value = currencyValue(input.value || input.dataset.rawValue);
     input.dataset.rawValue = value ? value.toFixed(2) : "";
-    return value;
-  }
-
-  function formatCurrencyInput(input) {
-    if (!input?.classList.contains("dw-currency-input")) return;
-    const value = storeCurrencyInput(input);
     input.value = value ? money(value) : "";
   }
 
-  function transactionAmount(sheet) {
-    const input = amountInput(sheet);
-    return currencyValue(input?.dataset.rawValue || input?.value);
-  }
-
-  function itemRemaining(kind, item, tracking) {
-    const key = `${kind === "income" ? "income" : "expense"}:${item.id}`;
-    return Math.max(0, num(item.amount) - num(tracking[key]));
-  }
-
-  function selectorGroups(type, budget) {
-    if (type === "income") return [{ title: "Income", items: budget.incomeItems }];
-    const groups = {};
-    budget.bills.forEach(item => {
-      const key = item.category || "other";
-      (groups[key] ||= []).push(item);
-    });
-    return Object.entries(groups).map(([key, items]) => ({ title: CATEGORY_LABELS[key] || "Other", items }));
-  }
-
-  function parseSelected(sheet) {
-    try {
-      const value = JSON.parse(sheet?.dataset.budgetItems || "[]");
-      return Array.isArray(value) ? value.map(item => ({ ...item, amount: currencyValue(item.amount) })) : [];
-    } catch { return []; }
-  }
-
-  function setSelected(sheet, selected) {
-    if (sheet) sheet.dataset.budgetItems = JSON.stringify(selected.map(item => ({ id: item.id, name: item.name, amount: currencyValue(item.amount) })));
-  }
-
-  function updateSplitSummary(sheet) {
-    if (!sheet) return;
-    const selected = parseSelected(sheet);
-    const total = transactionAmount(sheet);
-    const allocated = selected.reduce((sum, item) => sum + currencyValue(item.amount), 0);
-    const left = total - allocated;
-    const summary = sheet.querySelector(".dw-tx-split-summary");
-    if (!summary) return;
-    summary.classList.toggle("over", left < -0.004);
-    summary.classList.toggle("complete", Math.abs(left) <= 0.004 && total > 0);
-    summary.innerHTML = left < -0.004
-      ? `<strong>${money(Math.abs(left))}</strong> Over Assigned`
-      : `<strong>${money(left)}</strong> Left to Split`;
-  }
-
-  function renderSelectedItems(sheet) {
-    if (!sheet) return;
-    const selected = parseSelected(sheet);
-    sheet.querySelector(".dw-tx-selected-items")?.remove();
-    sheet.querySelector(".dw-tx-split-summary")?.remove();
-    const row = sheet.querySelector(".dw-tx-budget-row");
-    if (!row) return;
-    if (!selected.length) {
-      const value = row.querySelector("em");
-      if (value) value.textContent = "Select ›";
-      return;
-    }
-    const rows = selected.map(item => `<div class="dw-tx-selected-row" data-dw-selected-id="${esc(item.id)}"><button type="button" class="dw-tx-selected-remove" data-dw-remove-selected="${esc(item.id)}" aria-label="Remove ${esc(item.name)}">−</button><span class="dw-tx-selected-name">${esc(item.name)}</span><input class="dw-tx-split-input dw-currency-input" data-currency-ready="1" data-raw-value="${item.amount ? item.amount.toFixed(2) : ""}" data-dw-split-id="${esc(item.id)}" type="text" inputmode="decimal" autocomplete="off" value="${item.amount ? money(item.amount) : ""}" placeholder="$0.00" aria-label="Amount for ${esc(item.name)}"></div>`).join("");
-    row.insertAdjacentHTML("beforebegin", `<section class="dw-tx-selected-items">${rows}</section><div class="dw-tx-split-summary"></div>`);
-    const value = row.querySelector("em");
-    if (value) value.textContent = "Add another ›";
-    updateSplitSummary(sheet);
-  }
-
-  function closeSelector() { document.querySelector(".dw-selector")?.remove(); }
-
-  function openSelector() {
-    const sheet = document.querySelector(".dw-tx-sheet");
-    if (!sheet) return;
-    const type = transactionType();
-    const budget = currentBudget();
-    const selected = parseSelected(sheet);
-    const selectedIds = new Set(selected.map(item => String(item.id)));
-    const groups = selectorGroups(type, budget);
-    const cards = groups.length ? groups.map(group => {
-      const rows = group.items.map(item => {
-        const isSelected = selectedIds.has(String(item.id));
-        return `<button type="button" class="dw-selector-item${isSelected ? " selected" : ""}" data-dw-budget-item="${esc(item.id)}" data-dw-budget-name="${esc(item.name)}"><span class="dw-selector-check">${isSelected ? "✓" : ""}</span><span class="dw-selector-item-name">${esc(item.name)}</span><span class="dw-selector-amount">${money(itemRemaining(type, item, budget.tracking))}</span></button>`;
-      }).join("");
-      return `<section class="dw-selector-card" data-dw-selector-group><div class="dw-selector-card-head"><strong>${esc(group.title)}</strong><span>Remaining</span></div>${rows}</section>`;
-    }).join("") : '<div class="dw-selector-empty">No budget items are available for this transaction type.</div>';
-    document.body.insertAdjacentHTML("beforeend", `<section class="dw-selector" role="dialog" aria-modal="true" aria-label="Select Budget Items" data-dw-pending-items='${esc(JSON.stringify(selected))}'><header class="dw-selector-head"><div class="dw-selector-top"><button type="button" class="dw-selector-back" data-dw-selector-cancel>‹</button><div class="dw-selector-title">Select Budget Item(s)</div><button type="button" class="dw-selector-done" data-dw-selector-done>Done</button></div><label class="dw-selector-search"><span>⌕</span><input type="search" placeholder="Search" data-dw-selector-search></label></header><main class="dw-selector-body">${cards}</main></section>`);
-  }
-
-  function toggleBudgetItem(button) {
-    const selector = button.closest(".dw-selector");
-    if (!selector) return;
-    let pending = [];
-    try { pending = JSON.parse(selector.dataset.dwPendingItems || "[]"); } catch {}
-    if (!Array.isArray(pending)) pending = [];
-    const id = button.dataset.dwBudgetItem || "";
-    const existing = pending.findIndex(item => String(item.id) === String(id));
-    if (existing >= 0) pending.splice(existing, 1);
-    else pending.push({ id, name: button.dataset.dwBudgetName || "Budget item", amount: 0 });
-    selector.dataset.dwPendingItems = JSON.stringify(pending);
-    button.classList.toggle("selected", existing < 0);
-    const check = button.querySelector(".dw-selector-check");
-    if (check) check.textContent = existing < 0 ? "✓" : "";
-  }
-
-  function applySelectorChoices() {
-    const selector = document.querySelector(".dw-selector");
-    const sheet = document.querySelector(".dw-tx-sheet");
-    if (!selector || !sheet) return;
-    let pending = [];
-    try { pending = JSON.parse(selector.dataset.dwPendingItems || "[]"); } catch {}
-    const prior = new Map(parseSelected(sheet).map(item => [String(item.id), item.amount]));
-    const next = (Array.isArray(pending) ? pending : []).map(item => ({ ...item, amount: prior.get(String(item.id)) ?? currencyValue(item.amount) }));
-    setSelected(sheet, next);
-    renderSelectedItems(sheet);
-    closeSelector();
-  }
-
-  function removeSelectedItem(id) {
-    const sheet = document.querySelector(".dw-tx-sheet");
-    if (!sheet) return;
-    setSelected(sheet, parseSelected(sheet).filter(item => String(item.id) !== String(id)));
-    renderSelectedItems(sheet);
-  }
-
-  function updateSplitAmount(input) {
-    const sheet = input.closest(".dw-tx-sheet");
-    if (!sheet) return;
-    const value = storeCurrencyInput(input);
-    const id = input.dataset.dwSplitId;
-    const next = parseSelected(sheet).map(item => String(item.id) === String(id) ? { ...item, amount: value } : item);
-    setSelected(sheet, next);
-    updateSplitSummary(sheet);
-  }
-
-  function enhanceTransactionSheet(sheet) {
-    if (!sheet) return;
-    if (!sheet.dataset.budgetItems) sheet.dataset.budgetItems = "[]";
-    const total = amountInput(sheet);
-    decorateCurrencyInput(total);
-    if (!sheet.querySelector(".dw-tx-selected-items") && parseSelected(sheet).length) renderSelectedItems(sheet);
-    updateSplitSummary(sheet);
-  }
-
-  function resetTransactionSheetScroll() {
-    requestAnimationFrame(() => {
-      const sheet = document.querySelector(".dw-tx-sheet");
-      if (sheet) sheet.scrollTop = 0;
-      window.scrollTo(0, 0);
+  function formatAllSplitFields() {
+    document.querySelectorAll(".dw-tx-split-input.dw-currency-input").forEach(input => {
+      if (input === document.activeElement) return;
+      const value = currencyValue(input.value || input.dataset.rawValue);
+      input.dataset.rawValue = value ? value.toFixed(2) : "";
+      input.value = value ? money(value) : "";
     });
   }
 
-  document.addEventListener("focusin", event => {
-    const input = event.target.closest(".dw-currency-input");
-    if (input) showRawCurrency(input);
-  });
+  function installCurrencyFinishFix() {
+    document.addEventListener("focusin", event => {
+      const next = event.target;
+      if (!(next instanceof HTMLInputElement) || !next.classList.contains("dw-currency-input")) {
+        formatActiveCurrencyField();
+      }
+    }, true);
 
-  document.addEventListener("focusout", event => {
-    const input = event.target.closest(".dw-currency-input");
-    if (!input) return;
-    if (input.dataset.dwSplitId) updateSplitAmount(input);
-    formatCurrencyInput(input);
-    updateSplitSummary(input.closest(".dw-tx-sheet"));
-  });
+    document.addEventListener("click", event => {
+      const done = event.target.closest(".dw-tx-done,[data-dw-selector-done],.dw-tx-budget-row,[data-edp-trans-add]");
+      if (!done) return;
+      formatActiveCurrencyField();
+      requestAnimationFrame(formatAllSplitFields);
+    }, true);
 
-  document.addEventListener("input", event => {
-    const search = event.target.closest("[data-dw-selector-search]");
-    if (search) {
-      const query = search.value.trim().toLowerCase();
-      document.querySelectorAll(".dw-selector-item").forEach(row => row.hidden = Boolean(query) && !row.textContent.toLowerCase().includes(query));
-      document.querySelectorAll("[data-dw-selector-group]").forEach(group => group.hidden = !group.querySelector(".dw-selector-item:not([hidden])"));
-      return;
-    }
-    const split = event.target.closest("[data-dw-split-id]");
-    if (split) { updateSplitAmount(split); return; }
-    const sheet = event.target.closest(".dw-tx-sheet");
-    if (sheet && event.target === amountInput(sheet)) {
-      storeCurrencyInput(event.target);
-      updateSplitSummary(sheet);
-    }
-  });
+    document.addEventListener("keydown", event => {
+      if (event.key !== "Enter" && event.key !== "Done") return;
+      const input = event.target.closest(".dw-currency-input");
+      if (!input) return;
+      input.blur();
+      requestAnimationFrame(formatAllSplitFields);
+    }, true);
 
-  document.addEventListener("click", event => {
-    const view = event.target.closest("[data-budget-view]");
-    if (view) {
-      event.preventDefault();
-      try { localStorage.setItem(BUDGET_MODE_KEY, BUDGET_MODES.includes(view.dataset.budgetView) ? view.dataset.budgetView : "planned"); } catch {}
-      applyBudgetViewToggle();
-      return;
-    }
-    if (event.target.closest(".dw-nav-more")) { event.preventDefault(); openMoreMenu(); return; }
-    if (event.target.closest("[data-dw-more-close]")) { event.preventDefault(); closeMoreMenu(); return; }
-    const morePage = event.target.closest("[data-dw-more-page]");
-    if (morePage) {
-      event.preventDefault();
-      const page = morePage.dataset.dwMorePage;
-      closeMoreMenu();
-      saveActivePage(page);
-      document.querySelector(`#tabbar .tab-btn[data-page="${page}"]`)?.click();
-      return;
-    }
-    if (event.target.closest(".dw-tx-budget-row")) { event.preventDefault(); openSelector(); return; }
-    if (event.target.closest("[data-dw-selector-cancel]")) { event.preventDefault(); closeSelector(); return; }
-    if (event.target.closest("[data-dw-selector-done]")) { event.preventDefault(); applySelectorChoices(); return; }
-    const item = event.target.closest("[data-dw-budget-item]");
-    if (item) { event.preventDefault(); toggleBudgetItem(item); return; }
-    const remove = event.target.closest("[data-dw-remove-selected]");
-    if (remove) { event.preventDefault(); removeSelectedItem(remove.dataset.dwRemoveSelected); return; }
-    if (event.target.closest("[data-edp-trans-add]")) {
-      setTimeout(() => {
-        const sheet = document.querySelector(".dw-tx-sheet");
-        enhanceTransactionSheet(sheet);
-        renderSelectedItems(sheet);
-        resetTransactionSheetScroll();
-      }, 0);
-      setTimeout(() => enhanceTransactionSheet(document.querySelector(".dw-tx-sheet")), 80);
-    }
-    const nav = event.target.closest('[data-act="nav"][data-page],.tab-btn[data-page]');
-    if (nav?.dataset?.page) saveActivePage(nav.dataset.page);
-  }, true);
-
-  function initialize() {
-    addStyles();
-    applyPaycheckLayout();
-    applyBudgetViewToggle();
-    buildNavigation();
-    enhanceTransactionSheet(document.querySelector(".dw-tx-sheet"));
+    document.addEventListener("focusout", event => {
+      const input = event.target.closest(".dw-currency-input");
+      if (!input) return;
+      requestAnimationFrame(formatAllSplitFields);
+    }, true);
   }
 
-  window.addEventListener("load", () => {
-    initialize();
-    try {
-      if ((sessionStorage.getItem(PAGE_KEY) || localStorage.getItem(PAGE_KEY)) === "budget") document.querySelector('.tab-btn[data-page="budget"]')?.click();
-    } catch {}
-    let attempts = 0;
-    const timer = setInterval(() => {
-      initialize();
-      attempts += 1;
-      if (attempts >= 24 || document.querySelector("#tabbar .dw-nav-more")) clearInterval(timer);
-    }, 150);
-  });
-
-  initialize();
-  setTimeout(initialize, 0);
+  fetch(LEGACY_HELPER, { cache: "no-store" })
+    .then(response => {
+      if (!response.ok) throw new Error("Unable to load DebtWizard helper.");
+      return response.text();
+    })
+    .then(source => {
+      (0, eval)(`${source}\n//# sourceURL=debtwizard-helper-v13.js`);
+      installCurrencyFinishFix();
+      formatAllSplitFields();
+    })
+    .catch(error => {
+      console.error(error);
+      installCurrencyFinishFix();
+    });
 })();
