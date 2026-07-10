@@ -1,12 +1,12 @@
 (() => {
   "use strict";
 
-  const BASE_HELPER = "https://raw.githubusercontent.com/rwjohnson-ssi/-DebtCalculator/761c066f58989fb45dd749a007ec6db139675cbe/paycheck-form-overlap-fix-v4.js?feature=26";
+  const BASE_HELPER = "https://raw.githubusercontent.com/rwjohnson-ssi/-DebtCalculator/761c066f5899b4bb21c3d157/paycheck-form-overlap-fix-v4.js?feature=27";
 
   function ensureTransactionNavigationStyle() {
-    if (document.getElementById("dw-transaction-nav-v26")) return;
+    if (document.getElementById("dw-transaction-nav-v27")) return;
     const style = document.createElement("style");
-    style.id = "dw-transaction-nav-v26";
+    style.id = "dw-transaction-nav-v27";
     style.textContent = `
       #dw-primary-nav{box-sizing:border-box!important;min-height:74px!important;grid-template-columns:repeat(5,minmax(0,1fr))!important;align-items:center!important;padding:6px 6px calc(10px + env(safe-area-inset-bottom,0px))!important}
       #app-shell{padding-bottom:calc(84px + env(safe-area-inset-bottom,0px))!important}
@@ -19,6 +19,9 @@
       #dw-primary-nav .dw-nav-transaction .tab-icon{width:30px!important;height:28px!important;margin:0!important;border-radius:0!important;background:transparent!important;color:#748188!important;font-size:1.4rem!important;font-weight:950!important;box-shadow:none!important}
       #dw-primary-nav .dw-nav-more .tab-icon{width:30px!important;height:28px!important;font-size:1.42rem!important;letter-spacing:.06em!important}
       .dw-trans-page .dw-trans-fab{display:grid!important;place-items:center!important;right:24px!important;bottom:calc(96px + env(safe-area-inset-bottom,0px))!important;z-index:135!important;width:64px!important;height:64px!important;border-radius:50%!important;background:#004b75!important;color:#fff!important;font-size:2.7rem!important;line-height:1!important;box-shadow:0 10px 28px rgba(0,35,62,.26)!important}
+      .dw-trans-search input{pointer-events:auto!important;user-select:text!important;-webkit-user-select:text!important}
+      .dw-trans-no-results{display:none;margin:10px 0 26px;padding:26px 18px;border-radius:18px;background:#fff;color:#66777e;text-align:center;font-weight:800;box-shadow:0 8px 22px rgba(15,81,107,.06)}
+      .dw-trans-no-results.show{display:block}
     `;
     document.head.appendChild(style);
   }
@@ -49,6 +52,56 @@
     return true;
   }
 
+  function normalizeSearch(value) {
+    return String(value || "").toLowerCase().replace(/\s+/g, " ").trim();
+  }
+
+  function filterTransactions(input) {
+    const page = input.closest(".dw-trans-page");
+    if (!page) return;
+    const query = normalizeSearch(input.value);
+    const rows = [...page.querySelectorAll(".dw-tx-row")];
+    let visibleCount = 0;
+
+    rows.forEach(row => {
+      const matches = !query || normalizeSearch(row.textContent).includes(query);
+      row.hidden = !matches;
+      if (matches) visibleCount += 1;
+    });
+
+    page.querySelectorAll(".dw-trans-card").forEach(card => {
+      const cardRows = [...card.querySelectorAll(".dw-tx-row")];
+      if (cardRows.length) card.hidden = !cardRows.some(row => !row.hidden);
+    });
+
+    const wrap = page.querySelector(".dw-trans-wrap");
+    if (!wrap) return;
+    let empty = wrap.querySelector(".dw-trans-no-results");
+    if (!empty) {
+      empty = document.createElement("div");
+      empty.className = "dw-trans-no-results";
+      empty.textContent = "No transactions match your search.";
+      wrap.appendChild(empty);
+    }
+    empty.classList.toggle("show", Boolean(query) && visibleCount === 0);
+  }
+
+  function enableTransactionSearch() {
+    const input = document.querySelector(".dw-trans-page .dw-trans-search input");
+    if (!input) return false;
+    input.disabled = false;
+    input.readOnly = false;
+    input.setAttribute("autocomplete", "off");
+    input.setAttribute("inputmode", "search");
+    if (!input.dataset.dwSearchReady) {
+      input.dataset.dwSearchReady = "true";
+      input.addEventListener("input", () => filterTransactions(input));
+      input.addEventListener("search", () => filterTransactions(input));
+    }
+    filterTransactions(input);
+    return true;
+  }
+
   function showTransactionActiveState() {
     const nav = document.getElementById("dw-primary-nav");
     if (!nav) return;
@@ -59,10 +112,12 @@
   function scheduleTransactionsPageSetup() {
     requestAnimationFrame(() => {
       ensureTransactionsFab();
+      enableTransactionSearch();
       showTransactionActiveState();
     });
     setTimeout(() => {
       ensureTransactionsFab();
+      enableTransactionSearch();
       showTransactionActiveState();
     }, 120);
   }
@@ -73,13 +128,15 @@
       return response.text();
     })
     .then(source => {
-      (0, eval)(`${source}\n//# sourceURL=debtwizard-helper-feature-26.js`);
+      (0, eval)(`${source}\n//# sourceURL=debtwizard-helper-feature-27.js`);
       ensureTransactionNavigationStyle();
 
       let attempts = 0;
       const timer = setInterval(() => {
         attempts += 1;
-        if (setTransactionListNavigation() || attempts >= 40) clearInterval(timer);
+        const navigationReady = setTransactionListNavigation();
+        const searchReady = enableTransactionSearch();
+        if ((navigationReady && searchReady) || attempts >= 40) clearInterval(timer);
       }, 100);
 
       document.addEventListener("click", event => {
@@ -95,6 +152,8 @@
       setTimeout(setTransactionListNavigation, 0);
       setTimeout(setTransactionListNavigation, 500);
       setTimeout(ensureTransactionsFab, 0);
+      setTimeout(enableTransactionSearch, 0);
+      setTimeout(enableTransactionSearch, 500);
     })
     .catch(error => console.error(error));
 })();
