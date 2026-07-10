@@ -69,9 +69,10 @@
 
       #tabbar {
         display: grid !important;
-        grid-template-columns: repeat(6, minmax(0, 1fr)) !important;
+        grid-template-columns: repeat(5, minmax(0, 1fr)) !important;
         overflow: visible !important;
       }
+      #tabbar > .tab-btn[data-page="strategy"],
       #tabbar > .tab-btn[data-page="plan"],
       #tabbar > .tab-btn[data-page="track"],
       #tabbar > [data-edp-trans-nav],
@@ -92,27 +93,27 @@
         min-width: 0;
         padding: 7px 2px calc(7px + env(safe-area-inset-bottom, 0px));
         font: inherit;
-        font-size: .69rem;
+        font-size: .72rem;
         font-weight: 800;
       }
       #tabbar > .dw-nav-transaction .tab-icon,
       #tabbar > .dw-nav-more .tab-icon {
         display: grid;
         place-items: center;
-        width: 32px;
-        height: 32px;
-        font-size: 1.35rem;
+        width: 34px;
+        height: 34px;
+        font-size: 1.4rem;
         line-height: 1;
       }
       #tabbar > .dw-nav-transaction .tab-icon {
-        width: 48px;
-        height: 48px;
-        margin-top: -18px;
+        width: 54px;
+        height: 54px;
+        margin-top: -22px;
         border-radius: 50%;
         background: #004b75;
         color: #fff;
         box-shadow: 0 7px 18px rgba(0,35,62,.25);
-        font-size: 2rem;
+        font-size: 2.2rem;
         font-weight: 400;
       }
       #tabbar > .dw-nav-transaction span:last-child { color: #007f96; }
@@ -235,17 +236,20 @@
       transaction.innerHTML = '<span class="tab-icon">+</span><span>Transaction</span>';
     }
 
-    const strategy = bar.querySelector('.tab-btn[data-page="strategy"]');
-    if (strategy && transaction.nextElementSibling !== strategy) bar.insertBefore(transaction, strategy);
+    const budget = bar.querySelector('.tab-btn[data-page="budget"]');
+    if (budget && transaction.previousElementSibling !== budget) {
+      bar.insertBefore(transaction, budget.nextSibling);
+    }
 
-    if (!bar.querySelector(".dw-nav-more")) {
-      const more = document.createElement("button");
+    let more = bar.querySelector(".dw-nav-more");
+    if (!more) {
+      more = document.createElement("button");
       more.type = "button";
       more.className = "dw-nav-more";
       more.setAttribute("aria-label", "More navigation");
       more.innerHTML = '<span class="tab-icon">•••</span><span>More</span>';
-      bar.appendChild(more);
     }
+    bar.appendChild(more);
     return true;
   }
 
@@ -259,6 +263,9 @@
     document.body.insertAdjacentHTML("beforeend", `
       <div class="dw-more-backdrop" data-dw-more-close></div>
       <div class="dw-more-menu" role="dialog" aria-label="More navigation">
+        <button type="button" data-dw-more-page="strategy">
+          <span class="dw-more-icon">✦</span><span>Payoff Strategy</span><span class="dw-more-arrow">›</span>
+        </button>
         <button type="button" data-dw-more-page="plan">
           <span class="dw-more-icon">▤</span><span>Debt Payoff Plan</span><span class="dw-more-arrow">›</span>
         </button>
