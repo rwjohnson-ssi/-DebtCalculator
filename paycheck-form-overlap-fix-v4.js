@@ -1,7 +1,7 @@
 (() => {
   "use strict";
 
-  const LEGACY_HELPER = "https://raw.githubusercontent.com/rwjohnson-ssi/-DebtCalculator/1d8106c5816f07c04d4568f6da97aee27a10cff4/paycheck-form-overlap-fix-v4.js?helper=17";
+  const LEGACY_HELPER = "https://raw.githubusercontent.com/rwjohnson-ssi/-DebtCalculator/1d8106c5816f07c04d4568f6da97aee27a10cff4/paycheck-form-overlap-fix-v4.js?helper=18";
 
   const currencyValue = value => {
     const parsed = Number.parseFloat(String(value ?? "").replace(/[^0-9.-]/g, ""));
@@ -83,66 +83,63 @@
     }, true);
   }
 
-  function ensureFiveButtonNavigation() {
-    const bar = document.getElementById("tabbar");
-    if (!bar) return;
+  function installPersistentNavigation() {
+    const generatedBar = document.getElementById("tabbar");
+    if (!generatedBar || document.getElementById("dw-primary-nav")) return;
 
-    const home = bar.querySelector('.tab-btn[data-page="home"]');
-    const debts = bar.querySelector('.tab-btn[data-page="debts"]');
-    const budget = bar.querySelector('.tab-btn[data-page="budget"]');
-    if (!home || !debts || !budget) return;
+    generatedBar.hidden = true;
+    generatedBar.setAttribute("aria-hidden", "true");
 
-    bar.querySelectorAll("[data-edp-trans-nav],.dw-nav-plus").forEach(node => node.remove());
+    const style = document.createElement("style");
+    style.id = "dw-persistent-nav-style";
+    style.textContent = `
+      #tabbar{display:none!important}
+      #dw-primary-nav{position:fixed;left:0;right:0;bottom:0;z-index:120;display:grid;grid-template-columns:repeat(5,minmax(0,1fr));align-items:end;overflow:visible;background:#fff;border-top:1px solid #e1e8ea;padding:5px 0 calc(5px + env(safe-area-inset-bottom,0px));box-shadow:0 -4px 18px rgba(15,45,58,.07)}
+      #dw-primary-nav .tab-btn,#dw-primary-nav .dw-nav-more,#dw-primary-nav .dw-nav-transaction{appearance:none;border:0;background:transparent;min-width:0;color:#929da2;font:inherit;font-size:.72rem;font-weight:800;text-align:center;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;padding:4px 2px}
+      #dw-primary-nav .tab-icon{display:grid;place-items:center;height:27px;font-size:1.35rem;line-height:1}
+      #dw-primary-nav .tab-btn.active{color:#20bfd7}
+      #dw-primary-nav .dw-nav-transaction .tab-icon{width:58px;height:58px;margin-top:-27px;border-radius:50%;background:#004b75;color:#fff;font-size:2.25rem;font-weight:400;box-shadow:0 8px 20px rgba(0,35,62,.27)}
+      #dw-primary-nav .dw-nav-transaction span:last-child{color:#007f96}
+      #dw-primary-nav .dw-nav-more .tab-icon{font-size:1.45rem;letter-spacing:.08em}
+      #app-shell{padding-bottom:calc(76px + env(safe-area-inset-bottom,0px))}
+    `;
+    document.head.appendChild(style);
 
-    let transaction = bar.querySelector(".dw-nav-transaction");
-    if (!transaction) {
-      transaction = document.createElement("button");
-      transaction.type = "button";
-      transaction.className = "dw-nav-transaction";
-      transaction.setAttribute("data-edp-trans-add", "");
-      transaction.setAttribute("aria-label", "Add transaction");
-      transaction.innerHTML = '<span class="tab-icon">+</span><span>Transaction</span>';
-    }
+    const nav = document.createElement("nav");
+    nav.id = "dw-primary-nav";
+    nav.className = "tabbar";
+    nav.setAttribute("aria-label", "Primary navigation");
+    nav.innerHTML = `
+      <button type="button" class="tab-btn" data-dw-page="home"><span class="tab-icon">⌂</span><span>Home</span></button>
+      <button type="button" class="tab-btn" data-dw-page="debts"><span class="tab-icon">◔</span><span>Debts</span></button>
+      <button type="button" class="dw-nav-transaction" data-edp-trans-add aria-label="Add transaction"><span class="tab-icon">+</span><span>Transaction</span></button>
+      <button type="button" class="tab-btn" data-dw-page="budget"><span class="tab-icon">$</span><span>Budget</span></button>
+      <button type="button" class="dw-nav-more" aria-label="More navigation"><span class="tab-icon">•••</span><span>More</span></button>
+    `;
+    document.body.appendChild(nav);
 
-    let more = bar.querySelector(".dw-nav-more");
-    if (!more) {
-      more = document.createElement("button");
-      more.type = "button";
-      more.className = "dw-nav-more";
-      more.setAttribute("aria-label", "More navigation");
-      more.innerHTML = '<span class="tab-icon">•••</span><span>More</span>';
-    }
-
-    const transactionCorrect = transaction.parentElement === bar && transaction.nextElementSibling === budget;
-    const moreCorrect = more.parentElement === bar && more === bar.lastElementChild;
-    if (transactionCorrect && moreCorrect) return;
-
-    bar.insertBefore(transaction, budget);
-    bar.appendChild(more);
-  }
-
-  function installNavigationWatch() {
-    let scheduled = false;
-    const repair = () => {
-      if (scheduled) return;
-      scheduled = true;
-      requestAnimationFrame(() => {
-        scheduled = false;
-        ensureFiveButtonNavigation();
+    const syncActive = page => {
+      nav.querySelectorAll("[data-dw-page]").forEach(button => {
+        button.classList.toggle("active", button.dataset.dwPage === page);
       });
     };
 
-    repair();
-    new MutationObserver(mutations => {
-      const needsCheck = mutations.some(mutation =>
-        mutation.target?.id === "tabbar" ||
-        mutation.target?.closest?.("#tabbar") ||
-        [...mutation.addedNodes, ...mutation.removedNodes].some(node =>
-          node instanceof Element && (node.id === "tabbar" || node.querySelector?.("#tabbar"))
-        )
-      );
-      if (needsCheck) repair();
-    }).observe(document.body, { childList: true, subtree: true });
+    nav.addEventListener("click", event => {
+      const pageButton = event.target.closest("[data-dw-page]");
+      if (!pageButton) return;
+      const page = pageButton.dataset.dwPage;
+      const nativeButton = generatedBar.querySelector(`.tab-btn[data-page="${page}"]`);
+      if (nativeButton) nativeButton.click();
+      syncActive(page);
+    });
+
+    document.addEventListener("click", event => {
+      const nativeButton = event.target.closest('#tabbar .tab-btn[data-page]');
+      if (nativeButton) syncActive(nativeButton.dataset.page);
+    }, true);
+
+    const initial = generatedBar.querySelector(".tab-btn.active")?.dataset.page || "home";
+    syncActive(initial);
   }
 
   fetch(LEGACY_HELPER, { cache: "no-store" })
@@ -151,14 +148,14 @@
       return response.text();
     })
     .then(source => {
-      (0, eval)(`${source}\n//# sourceURL=debtwizard-helper-v17.js`);
+      (0, eval)(`${source}\n//# sourceURL=debtwizard-helper-v18.js`);
       installSplitTypingFix();
-      installNavigationWatch();
+      installPersistentNavigation();
       formatAllSplits();
     })
     .catch(error => {
       console.error(error);
       installSplitTypingFix();
-      installNavigationWatch();
+      installPersistentNavigation();
     });
 })();
