@@ -6,10 +6,10 @@
   const BUDGET_MODES = ["planned", "spent", "remaining"];
 
   function addStyles() {
-    if (document.getElementById("debtwizard-ui-fixes-v6")) return;
-    document.getElementById("debtwizard-ui-fixes-v5")?.remove();
+    if (document.getElementById("debtwizard-ui-fixes-v7")) return;
+    document.getElementById("debtwizard-ui-fixes-v6")?.remove();
     const style = document.createElement("style");
-    style.id = "debtwizard-ui-fixes-v6";
+    style.id = "debtwizard-ui-fixes-v7";
     style.textContent = `
       @media (max-width: 560px) {
         #paycheck-overlay .paycheck-config { display:block!important; padding:16px!important; }
@@ -49,23 +49,37 @@
       #tabbar > .tab-btn[data-page="track"],
       #tabbar > [data-edp-trans-nav],
       #tabbar > .dw-nav-plus { display:none!important; }
-      #tabbar > .dw-nav-transaction,
-      #tabbar > .dw-nav-more {
+
+      #tabbar > .dw-nav-transaction {
         appearance:none; border:0; background:transparent; color:#8d989e;
         display:flex; flex-direction:column; align-items:center; justify-content:center;
         gap:3px; min-width:0; padding:7px 2px calc(7px + env(safe-area-inset-bottom,0px));
         font:inherit; font-size:.72rem; font-weight:800;
       }
-      #tabbar > .dw-nav-transaction .tab-icon,
-      #tabbar > .dw-nav-more .tab-icon {
-        display:grid; place-items:center; width:34px; height:34px; font-size:1.4rem; line-height:1;
-      }
       #tabbar > .dw-nav-transaction .tab-icon {
-        width:54px; height:54px; margin-top:-22px; border-radius:50%;
-        background:#004b75; color:#fff; box-shadow:0 7px 18px rgba(0,35,62,.25);
-        font-size:2.2rem; font-weight:400;
+        display:grid; place-items:center; width:54px; height:54px; margin-top:-22px;
+        border-radius:50%; background:#004b75; color:#fff;
+        box-shadow:0 7px 18px rgba(0,35,62,.25); font-size:2.2rem;
+        line-height:1; font-weight:400;
       }
       #tabbar > .dw-nav-transaction span:last-child { color:#007f96; }
+
+      /* Match More exactly to the native Home and Debts tab geometry. */
+      #tabbar > .dw-nav-more {
+        appearance:none; border:0; background:transparent; color:#96a0a4;
+        display:grid!important; grid-template-rows:26px 16px!important;
+        justify-items:center!important; align-items:center!important;
+        gap:0!important; min-width:0; padding:3px 0!important;
+        font:inherit; font-size:.71rem!important; line-height:1!important;
+        font-weight:750!important;
+      }
+      #tabbar > .dw-nav-more .tab-icon {
+        display:block!important; width:auto!important; height:auto!important;
+        margin:0!important; font-size:1.43rem!important; line-height:1!important;
+      }
+      #tabbar > .dw-nav-more span:last-child {
+        display:block; margin:0; line-height:1!important;
+      }
 
       .dw-more-backdrop { position:fixed; inset:0; z-index:180; background:rgba(8,22,29,.35); }
       .dw-more-menu {
@@ -83,22 +97,21 @@
       .dw-more-icon,.dw-more-arrow { color:#0f7893; }
       .dw-more-arrow { font-size:1.5rem; }
 
-      /* Match the Add Transaction form to DebtWizard and keep its header visible. */
       .dw-tx-root {
-        position:fixed!important; inset:0!important; z-index:140!important;
+        position:fixed!important; inset:0!important; width:100%!important; height:100dvh!important;
         overflow:hidden!important; background:#eefbfe!important;
       }
-      .dw-tx-backdrop { position:fixed!important; inset:0!important; background:rgba(0,55,76,.34)!important; }
+      .dw-tx-backdrop { background:rgba(0,55,76,.34)!important; }
       .dw-tx-sheet {
-        position:fixed!important; inset:0!important; width:100%!important; height:100%!important;
-        max-height:none!important; overflow-y:auto!important; overflow-x:hidden!important;
-        -webkit-overflow-scrolling:touch; overscroll-behavior:contain;
+        position:absolute!important; inset:0!important; width:100%!important; height:100dvh!important;
+        max-height:none!important; overflow-y:auto!important; overscroll-behavior:contain!important;
         border-radius:0!important;
         background:linear-gradient(180deg,#dff8fc 0,#f7fcfd 230px,#f7fcfd 100%)!important;
         box-shadow:none!important; padding-bottom:env(safe-area-inset-bottom,0px)!important;
+        -webkit-overflow-scrolling:touch!important;
       }
       .dw-tx-sheet-head {
-        position:sticky!important; top:0!important; z-index:5!important;
+        position:sticky!important; top:0!important; z-index:3!important;
         border-radius:0!important; padding:calc(14px + env(safe-area-inset-top,0px)) 24px 22px!important;
         background:linear-gradient(135deg,#087b96,#27bfd2)!important;
         color:#fff!important; box-shadow:0 8px 22px rgba(8,123,150,.18)!important;
@@ -178,17 +191,6 @@
     if (pair) pair.classList.add("paycheck-fields-stacked-mobile");
   }
 
-  function pinTransactionTop() {
-    const root = document.querySelector(".dw-tx-root");
-    const sheet = root?.querySelector(".dw-tx-sheet");
-    if (!root || !sheet) return false;
-    root.scrollTop = 0;
-    sheet.scrollTop = 0;
-    try { sheet.scrollTo({ top: 0, left: 0, behavior: "instant" }); }
-    catch { sheet.scrollTo(0, 0); }
-    return true;
-  }
-
   function buildNavigation() {
     const bar = document.getElementById("tabbar");
     if (!bar) return false;
@@ -237,11 +239,6 @@
       applyBudgetViewToggle();
       return;
     }
-    if (event.target.closest("[data-edp-trans-add]")) {
-      setTimeout(pinTransactionTop, 0);
-      setTimeout(pinTransactionTop, 80);
-      setTimeout(pinTransactionTop, 220);
-    }
     if (event.target.closest(".dw-nav-more")) {
       event.preventDefault();
       openMoreMenu();
@@ -265,18 +262,28 @@
     if (nav?.dataset?.page) saveActivePage(nav.dataset.page);
   }, true);
 
+  function resetTransactionSheetScroll() {
+    requestAnimationFrame(() => {
+      const sheet = document.querySelector(".dw-tx-sheet");
+      if (sheet) sheet.scrollTop = 0;
+      window.scrollTo(0, 0);
+    });
+  }
+
+  document.addEventListener("click", event => {
+    if (event.target.closest("[data-edp-trans-add]")) {
+      setTimeout(resetTransactionSheetScroll, 0);
+      setTimeout(resetTransactionSheetScroll, 80);
+    }
+  }, true);
+
   function initialize() {
     addStyles();
     applyPaycheckLayout();
     applyBudgetViewToggle();
     buildNavigation();
-    pinTransactionTop();
+    if (document.querySelector(".dw-tx-root")) resetTransactionSheetScroll();
   }
-
-  const observer = new MutationObserver(() => {
-    if (document.querySelector(".dw-tx-root")) requestAnimationFrame(pinTransactionTop);
-  });
-  observer.observe(document.documentElement, { childList: true, subtree: true });
 
   window.addEventListener("load", () => {
     initialize();
