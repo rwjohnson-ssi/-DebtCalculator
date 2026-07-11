@@ -1,12 +1,12 @@
 (() => {
   "use strict";
 
-  if (window.__debtWizardHelperBootstrapV42) return;
-  window.__debtWizardHelperBootstrapV42 = true;
+  if (window.__debtWizardHelperBootstrapV43) return;
+  window.__debtWizardHelperBootstrapV43 = true;
 
   const PAGE_KEY = "debtwizard-active-page";
   const currentScript = document.currentScript;
-  const coreUrl = new URL("debtwizard-helper-core-v38.js?cache=48", currentScript?.src || window.location.href).href;
+  const coreUrl = new URL("debtwizard-helper-core-v38.js?cache=49", currentScript?.src || window.location.href).href;
   let lastPointerActivation = 0;
 
   function ensureMonthSelectorStyle() {
@@ -158,6 +158,30 @@
     document.head.appendChild(style);
   }
 
+  function ensureBottomNavigationClearance() {
+    document.getElementById("dw-bottom-nav-clearance-v43")?.remove();
+    const style = document.createElement("style");
+    style.id = "dw-bottom-nav-clearance-v43";
+    style.textContent = `
+      :root{
+        --dw-bottom-nav-clearance:calc(118px + env(safe-area-inset-bottom,0px));
+      }
+      html,body{
+        scroll-padding-bottom:var(--dw-bottom-nav-clearance)!important;
+      }
+      html body #app-shell{
+        padding-bottom:0!important;
+      }
+      html body #screen{
+        box-sizing:border-box!important;
+        min-height:100vh!important;
+        min-height:100dvh!important;
+        padding-bottom:var(--dw-bottom-nav-clearance)!important;
+      }
+    `;
+    document.head.appendChild(style);
+  }
+
   function navMoreButton(target) {
     if (!(target instanceof Element)) return null;
     const button = target.closest("button,[role='button']");
@@ -281,6 +305,7 @@
     if (event.key === "Escape" && document.querySelector(".dw-more-menu")) closeMoreMenu();
   });
 
+  ensureBottomNavigationClearance();
   ensureMonthSelectorStyle();
 
   const existingCore = document.querySelector("script[data-debtwizard-core-v38]");
