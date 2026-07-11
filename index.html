@@ -14,6 +14,262 @@
   </style>
 </head>
 <body>
-  <iframe id="app-host" title="DebtWizard" src="mobile.html?v=66" allow="clipboard-read; clipboard-write"></iframe>
+  <iframe id="app-host" title="DebtWizard" src="mobile.html?v=67" allow="clipboard-read; clipboard-write"></iframe>
+  <script>
+    (() => {
+      "use strict";
+
+      const host = document.getElementById("app-host");
+      const STORE = "debt-calculator-v2";
+      const PAGE_KEY = "debtwizard-active-page";
+      const money = value => new Intl.NumberFormat("en-US", { style:"currency", currency:"USD" })
+        .format(Number.isFinite(Number(value)) ? Number(value) : 0);
+      const number = value => Number.isFinite(Number.parseFloat(value)) ? Number.parseFloat(value) : 0;
+      const esc = value => String(value ?? "").replace(/[&<>"']/g, char => ({
+        "&":"&amp;", "<":"&lt;", ">":"&gt;", '"':"&quot;", "'":"&#39;"
+      }[char]));
+
+      function monthKey(doc) {
+        const text = doc.querySelector(".hero-title")?.textContent?.trim() || "";
+        const months = {
+          january:"01", february:"02", march:"03", april:"04", may:"05", june:"06",
+          july:"07", august:"08", september:"09", october:"10", november:"11", december:"12"
+        };
+        const match = text.match(/^([A-Za-z]+)\s+(20\d{2})$/);
+        if (match && months[match[1].toLowerCase()]) return `${match[2]}-${months[match[1].toLowerCase()]}`;
+        const now = new Date();
+        return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
+      }
+
+      function loadBudget(doc) {
+        let state = {};
+        try { state = JSON.parse(doc.defaultView.localStorage.getItem(STORE)) || {}; }
+        catch {}
+        state.settings = state.settings && typeof state.settings === "object" ? state.settings : {};
+        state.settings.monthlyBudgets = state.settings.monthlyBudgets && typeof state.settings.monthlyBudgets === "object"
+          ? state.settings.monthlyBudgets : {};
+        const month = monthKey(doc);
+        const budget = state.settings.monthlyBudgets[month] || {};
+        budget.transactions = Array.isArray(budget.transactions) ? budget.transactions : [];
+        return { month, budget };
+      }
+
+      function dayLabel(value) {
+        const date = /^\d{4}-\d{2}-\d{2}$/.test(String(value || ""))
+          ? new Date(`${value}T12:00:00`) : new Date();
+        return {
+          month: date.toLocaleDateString("en-US", { month:"short" }),
+          day: date.toLocaleDateString("en-US", { day:"numeric" })
+        };
+      }
+
+      function monthLabel(value) {
+        const [year, month] = String(value).split("-").map(Number);
+        return new Date(year, month - 1, 1).toLocaleDateString("en-US", { month:"long", year:"numeric" });
+      }
+
+      function ensureStyles(doc) {
+        if (doc.getElementById("dw-transaction-route-v67")) return;
+        const style = doc.createElement("style");
+        style.id = "dw-transaction-route-v67";
+        style.textContent = `
+          .dw-trans-page{min-height:calc(100vh - 74px);background:#f4f6f7;padding-bottom:118px;color:#172d38}
+          .dw-trans-hero{background:linear-gradient(135deg,#cdeff4,#eafcfe);color:#0f516b;padding:calc(18px + env(safe-area-inset-top,0px)) 26px 22px;border-bottom:1px solid #b9e3ea}
+          .dw-trans-top{display:grid;grid-template-columns:72px 1fr 72px;align-items:center;margin-bottom:15px}
+          .dw-trans-title{text-align:center;font-size:1.12rem;font-weight:950}
+          .dw-trans-search{display:flex;align-items:center;gap:9px;background:#fff;border:1px solid #d6e7ea;border-radius:12px;padding:11px 14px;color:#7c8d93;box-shadow:0 8px 20px rgba(15,81,107,.08)}
+          .dw-trans-search input{width:100%;border:0;outline:0;background:transparent;color:#263137;font-size:1rem}
+          .dw-trans-wrap{padding:26px}
+          .dw-trans-card{margin-bottom:22px;overflow:hidden;background:#fff;border:1px solid #dce8eb;border-radius:20px;padding:18px;box-shadow:0 10px 26px rgba(15,81,107,.07)}
+          .dw-deleted-row{width:100%;display:grid;grid-template-columns:34px 1fr auto;align-items:center;gap:12px;border:0;background:#fff;padding:2px;color:#1d3039;text-align:left;font:inherit;font-weight:900;font-size:1.02rem}
+          .dw-deleted-row span:first-child,.dw-deleted-row span:last-child{color:#0f7893;font-size:1.45rem}
+          .dw-month-title{margin-bottom:10px;color:#47555b;font-weight:900}
+          .dw-tx-row{display:grid;grid-template-columns:54px minmax(0,1fr) auto;align-items:center;gap:14px;padding:14px 0;border-top:1px solid #edf1f2}
+          .dw-tx-row:first-of-type{border-top:0}
+          .dw-date-dot{width:50px;height:50px;display:grid;place-items:center;border:2px solid #e3eaed;border-radius:50%;color:#53646b;text-align:center;font-size:.72rem;font-weight:900;line-height:1.05}
+          .dw-tx-name{display:block;color:#20272d;font-size:1.02rem;font-weight:850}
+          .dw-tx-cat{display:block;margin-top:4px;color:#0f7893;font-size:.8rem;font-weight:800}
+          .dw-tx-amount{color:#20272d;font-weight:900;white-space:nowrap}
+          .dw-trans-empty{padding:46px 8px 72px}
+          .dw-trans-empty h2{margin:0 0 14px;font-size:2rem;line-height:1.08}
+          .dw-trans-empty p{margin:0 0 24px;color:#53646b;line-height:1.4}
+          .dw-first-btn{width:100%;min-height:56px;border:0;border-radius:13px;background:linear-gradient(135deg,#0f7893,#27c7d8);color:#fff;font:inherit;font-weight:900}
+          .dw-trans-fab{position:fixed;right:24px;bottom:calc(96px + env(safe-area-inset-bottom,0px));z-index:135;width:64px;height:64px;border:0;border-radius:50%;background:linear-gradient(135deg,#0f7893,#27c7d8);color:#fff;font-size:2.7rem;line-height:1;box-shadow:0 10px 28px rgba(0,35,62,.26)}
+          .dw-trans-no-results{display:none;padding:24px;color:#68777d;text-align:center;font-weight:800}
+          .dw-trans-no-results.show{display:block}
+          .dw-tx-root{position:fixed;inset:0;z-index:1400}
+          .dw-tx-backdrop{position:absolute;inset:0;background:rgba(8,22,29,.35);backdrop-filter:blur(2px)}
+          .dw-tx-sheet{position:absolute;left:0;right:0;bottom:0;max-height:94vh;overflow:auto;background:#f4f6f7;border-radius:30px 30px 0 0;box-shadow:0 -24px 60px rgba(0,35,62,.25)}
+          .dw-tx-sheet-head{background:linear-gradient(135deg,#087b96,#27bfd2);color:#fff;border-radius:30px 30px 0 0;padding:12px 26px 20px}
+          .dw-tx-grabber{width:54px;height:6px;border-radius:999px;background:rgba(255,255,255,.48);margin:0 auto 18px}
+          .dw-tx-head-row{display:grid;grid-template-columns:82px 1fr 82px;align-items:center;font-weight:850}
+          .dw-tx-head-row strong{text-align:center;font-size:1.1rem}
+          .dw-tx-link{border:0;background:transparent;color:#fff;font-size:1rem;text-align:left}
+          .dw-tx-done{text-align:right;opacity:.58}
+          .dw-tx-toggle{display:grid;grid-template-columns:1fr 1fr;background:rgba(0,83,105,.46);border-radius:11px;margin-top:18px;overflow:hidden}
+          .dw-tx-toggle button{border:0;background:transparent;color:#fff;padding:10px;font-size:1rem;font-weight:800}
+          .dw-tx-toggle button.active{background:rgba(255,255,255,.22);box-shadow:inset 0 0 0 2px rgba(255,255,255,.24)}
+          .dw-tx-body{padding:26px}
+          .dw-tx-panel{background:#fff;border-radius:20px;padding:0 26px;margin-bottom:26px}
+          .dw-tx-field{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.1fr);gap:14px;align-items:center;min-height:72px;border-bottom:1px solid #e6ebee}
+          .dw-tx-field:last-child{border-bottom:0}
+          .dw-tx-field span{font-size:1.05rem;color:#1f272d}
+          .dw-tx-field input{width:100%;min-width:0;border:0;outline:0;text-align:right;color:#0079a8;font-size:1.05rem;background:transparent}
+          .dw-tx-account{display:block;padding:17px 0 20px}
+          .dw-tx-account strong{display:block;font-size:1.05rem;color:#1f272d}
+          .dw-tx-account small{display:block;margin-top:6px;line-height:1.3;color:#4f5d63;font-size:.94rem}
+          .dw-tx-budget-row{border:0;width:100%;background:#fff;border-radius:20px;margin-bottom:26px;display:flex;align-items:center;justify-content:space-between;padding:21px 26px;font-size:1.05rem;color:#1f272d}
+          .dw-tx-budget-row em{font-style:normal;color:#0079a8;font-weight:850}
+          .dw-tx-note{box-sizing:border-box;width:100%;min-height:86px;border:0;border-radius:18px;background:#fff;padding:22px 26px;font-size:1.05rem;resize:none;outline:0}
+          @media(min-width:900px){.dw-trans-page{padding-bottom:40px}.dw-trans-fab{bottom:28px}.dw-tx-sheet{left:50%;right:auto;width:min(680px,calc(100vw - 40px));transform:translateX(-50%);border-radius:30px;bottom:24px}}
+        `;
+        doc.head.appendChild(style);
+      }
+
+      function transactionNavButton(target) {
+        const button = target?.closest?.("#dw-primary-nav button,#tabbar button");
+        if (!button) return null;
+        const text = `${button.getAttribute("aria-label") || ""} ${button.textContent || ""}`.replace(/\s+/g, " ").trim().toLowerCase();
+        return button.matches(".dw-nav-transaction,[data-edp-trans-nav]") || text === "transactions" || text.endsWith(" transactions")
+          ? button : null;
+      }
+
+      function markActive(doc, button) {
+        const nav = button?.closest("#dw-primary-nav,#tabbar");
+        nav?.querySelectorAll(".active").forEach(item => item.classList.remove("active"));
+        button?.classList.add("active");
+      }
+
+      function transactionRows(items) {
+        return items.map(item => {
+          const date = dayLabel(item.date);
+          const allocations = Array.isArray(item.allocations) ? item.allocations : [];
+          const category = allocations.map(entry => entry.budgetItemName || entry.name).filter(Boolean).join(", ")
+            || item.budgetItemName || item.category || "Unassigned";
+          return `<div class="dw-tx-row">
+            <span class="dw-date-dot">${esc(date.month)}<br>${esc(date.day)}</span>
+            <span><span class="dw-tx-name">${esc(item.merchant || item.source || "Transaction")}</span><span class="dw-tx-cat">${esc(category)}</span></span>
+            <span class="dw-tx-amount">${item.type === "income" ? "+" : "-"}${money(Math.max(0, number(item.amount)))}</span>
+          </div>`;
+        }).join("");
+      }
+
+      function renderTransactions(doc, activeButton) {
+        const screen = doc.getElementById("screen");
+        if (!screen) return;
+        ensureStyles(doc);
+        const { month, budget } = loadBudget(doc);
+        const transactions = [...budget.transactions].sort((a, b) => String(b.date || "").localeCompare(String(a.date || "")));
+        screen.dataset.transactionsShell = "1";
+        doc.body.dataset.debtwizardPage = "transactions";
+        screen.innerHTML = `<section class="dw-trans-page">
+          <header class="dw-trans-hero">
+            <div class="dw-trans-top"><span></span><div class="dw-trans-title">Transactions</div><span></span></div>
+            <label class="dw-trans-search"><span>⌕</span><input type="search" placeholder="Search transactions" aria-label="Search transactions"></label>
+          </header>
+          <main class="dw-trans-wrap">
+            <article class="dw-trans-card"><button type="button" class="dw-deleted-row"><span>♲</span><span>Deleted</span><span>›</span></button></article>
+            ${transactions.length
+              ? `<article class="dw-trans-card"><div class="dw-month-title">${esc(monthLabel(month))}</div>${transactionRows(transactions)}<div class="dw-trans-no-results">No transactions match your search.</div></article>`
+              : `<section class="dw-trans-empty"><h2>Track your first transaction</h2><p>Enter an expense or income transaction and assign it to the correct budget item.</p><button type="button" class="dw-first-btn" data-edp-trans-add>Track My First Transaction</button></section>`}
+          </main>
+          <button type="button" class="dw-trans-fab" data-edp-trans-add aria-label="Add transaction">+</button>
+        </section>`;
+        markActive(doc, activeButton);
+        const search = screen.querySelector(".dw-trans-search input");
+        search?.addEventListener("input", () => {
+          const query = search.value.trim().toLowerCase();
+          let visible = 0;
+          screen.querySelectorAll(".dw-tx-row").forEach(row => {
+            const matches = !query || row.textContent.toLowerCase().includes(query);
+            row.hidden = !matches;
+            if (matches) visible += 1;
+          });
+          screen.querySelector(".dw-trans-no-results")?.classList.toggle("show", Boolean(query) && visible === 0);
+        });
+      }
+
+      function showTransactionPopup(doc, type = "expense") {
+        ensureStyles(doc);
+        doc.querySelector(".dw-tx-root")?.remove();
+        const activeType = type === "income" ? "income" : "expense";
+        const root = doc.createElement("div");
+        root.className = "dw-tx-root";
+        root.innerHTML = `<div class="dw-tx-backdrop" data-edp-trans-close></div>
+          <section class="dw-tx-sheet" role="dialog" aria-modal="true" aria-label="Add Transaction">
+            <header class="dw-tx-sheet-head">
+              <div class="dw-tx-grabber"></div>
+              <div class="dw-tx-head-row"><button class="dw-tx-link" type="button" data-edp-trans-close>Cancel</button><strong>Add Transaction</strong><span class="dw-tx-link dw-tx-done">Done</span></div>
+              <div class="dw-tx-toggle"><button type="button" class="${activeType === "expense" ? "active" : ""}" data-edp-trans-type="expense">− Expense</button><button type="button" class="${activeType === "income" ? "active" : ""}" data-edp-trans-type="income">+ Income</button></div>
+            </header>
+            <main class="dw-tx-body">
+              <section class="dw-tx-panel">
+                <label class="dw-tx-field"><span>Date</span><input type="date" value="${new Date().toISOString().slice(0, 10)}"></label>
+                <label class="dw-tx-field"><span>Amount</span><input type="number" min="0" step="0.01" inputmode="decimal" placeholder="$0.00"></label>
+                <label class="dw-tx-field"><span>${activeType === "income" ? "Source" : "Merchant"}</span><input type="text" maxlength="80" placeholder="Name"></label>
+                <div class="dw-tx-account"><strong>Account</strong><small>No bank connection required. Transactions are entered manually and stored locally in this browser.</small></div>
+              </section>
+              <button type="button" class="dw-tx-budget-row"><span>Budget Item(s)</span><em>Select ›</em></button>
+              <section class="dw-tx-panel"><label class="dw-tx-field"><span>Check #</span><input type="text" inputmode="numeric" placeholder="0000"></label></section>
+              <textarea class="dw-tx-note" placeholder="Add a Note"></textarea>
+            </main>
+          </section>`;
+        doc.body.appendChild(root);
+      }
+
+      function install(doc) {
+        const win = doc.defaultView;
+        if (!doc.body || win.__dwTransactionRouteV67) return;
+        win.__dwTransactionRouteV67 = true;
+
+        doc.addEventListener("click", event => {
+          const navButton = transactionNavButton(event.target);
+          if (navButton) {
+            event.preventDefault();
+            event.stopImmediatePropagation();
+            try {
+              win.localStorage.setItem(PAGE_KEY, "transactions");
+              win.sessionStorage.setItem(PAGE_KEY, "transactions");
+            } catch {}
+            renderTransactions(doc, navButton);
+            return;
+          }
+
+          const add = event.target.closest?.("[data-edp-trans-add]");
+          if (add) {
+            event.preventDefault();
+            event.stopPropagation();
+            showTransactionPopup(doc, "expense");
+            return;
+          }
+
+          const type = event.target.closest?.("[data-edp-trans-type]");
+          if (type) {
+            event.preventDefault();
+            showTransactionPopup(doc, type.dataset.edpTransType);
+            return;
+          }
+
+          if (event.target.closest?.("[data-edp-trans-close]")) {
+            event.preventDefault();
+            doc.querySelector(".dw-tx-root")?.remove();
+            return;
+          }
+
+          const otherNav = event.target.closest?.("#dw-primary-nav button,#tabbar button,[data-dw-more-page]");
+          if (otherNav) {
+            delete doc.body.dataset.debtwizardPage;
+            const screen = doc.getElementById("screen");
+            if (screen) screen.dataset.transactionsShell = "";
+          }
+        }, true);
+      }
+
+      host.addEventListener("load", () => {
+        try { install(host.contentDocument); }
+        catch (error) { console.error("Transactions navigation could not be installed.", error); }
+      });
+    })();
+  </script>
 </body>
 </html>
