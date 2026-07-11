@@ -1,46 +1,40 @@
 (() => {
   "use strict";
 
-  if (window.__debtWizardHelperBootstrapV41) return;
-  window.__debtWizardHelperBootstrapV41 = true;
+  if (window.__debtWizardHelperBootstrapV42) return;
+  window.__debtWizardHelperBootstrapV42 = true;
 
   const PAGE_KEY = "debtwizard-active-page";
   const currentScript = document.currentScript;
-  const coreUrl = new URL("debtwizard-helper-core-v38.js?cache=47", currentScript?.src || window.location.href).href;
+  const coreUrl = new URL("debtwizard-helper-core-v38.js?cache=48", currentScript?.src || window.location.href).href;
   let lastPointerActivation = 0;
 
   function ensureMonthSelectorStyle() {
-    document.getElementById("dw-month-selector-layout-v41")?.remove();
+    document.getElementById("dw-month-selector-layout-v42")?.remove();
     const style = document.createElement("style");
-    style.id = "dw-month-selector-layout-v41";
+    style.id = "dw-month-selector-layout-v42";
     style.textContent = `
       html body .budget-month-tools .budget-month-row{
         box-sizing:border-box!important;
         display:grid!important;
-        grid-template-columns:42px minmax(0,1fr) 42px!important;
-        grid-template-rows:auto 42px!important;
+        grid-template-columns:52px minmax(0,1fr) 52px!important;
+        grid-template-rows:auto 52px!important;
         column-gap:14px!important;
-        row-gap:6px!important;
-        align-items:stretch!important;
+        row-gap:8px!important;
+        align-items:center!important;
         width:100%!important;
         margin:0 0 12px!important;
       }
       html body .budget-month-tools .budget-month-row>.budget-month-picker{
-        box-sizing:border-box!important;
-        grid-column:2!important;
-        grid-row:1 / span 2!important;
-        display:grid!important;
-        grid-template-rows:auto 42px!important;
-        gap:6px!important;
-        align-items:stretch!important;
-        min-width:0!important;
-        width:100%!important;
-        margin:0!important;
-        padding:0!important;
+        display:contents!important;
       }
       html body .budget-month-tools .budget-month-row>.budget-month-picker>span{
+        box-sizing:border-box!important;
         display:block!important;
         position:static!important;
+        grid-column:2!important;
+        grid-row:1!important;
+        justify-self:stretch!important;
         width:100%!important;
         margin:0!important;
         padding:0!important;
@@ -49,45 +43,81 @@
         font-weight:850!important;
         line-height:1!important;
         letter-spacing:.08em!important;
-        text-align:left!important;
+        text-align:center!important;
         text-transform:uppercase!important;
         white-space:nowrap!important;
       }
       html body .budget-month-tools .budget-month-row>.budget-month-picker>input{
         box-sizing:border-box!important;
         display:block!important;
-        position:static!important;
+        position:relative!important;
+        grid-column:2!important;
+        grid-row:2!important;
+        align-self:center!important;
+        justify-self:stretch!important;
         width:100%!important;
         min-width:0!important;
-        height:42px!important;
-        min-height:42px!important;
-        max-height:42px!important;
+        max-width:100%!important;
+        min-inline-size:0!important;
+        height:52px!important;
+        min-height:52px!important;
+        max-height:52px!important;
         margin:0!important;
-        padding:8px 11px!important;
+        padding:0 14px!important;
+        overflow:hidden!important;
         border:1px solid #d7e7ea!important;
         border-radius:13px!important;
         background:#fff!important;
         color:#153f51!important;
+        font-family:inherit!important;
         font-size:1rem!important;
         font-weight:900!important;
-        line-height:1!important;
+        line-height:52px!important;
         letter-spacing:0!important;
         text-align:center!important;
         text-transform:none!important;
         transform:none!important;
+        -webkit-appearance:none!important;
+        appearance:none!important;
+      }
+      html body .budget-month-tools .budget-month-row>.budget-month-picker>input::-webkit-date-and-time-value{
+        min-height:52px!important;
+        margin:0!important;
+        padding:0!important;
+        line-height:52px!important;
+        text-align:center!important;
+      }
+      html body .budget-month-tools .budget-month-row>.budget-month-picker>input::-webkit-datetime-edit{
+        display:flex!important;
+        align-items:center!important;
+        justify-content:center!important;
+        min-height:52px!important;
+        padding:0!important;
+      }
+      html body .budget-month-tools .budget-month-row>.budget-month-picker>input::-webkit-calendar-picker-indicator{
+        position:absolute!important;
+        inset:0!important;
+        width:100%!important;
+        height:100%!important;
+        margin:0!important;
+        padding:0!important;
+        opacity:0!important;
+        cursor:pointer!important;
       }
       html body .budget-month-tools .budget-month-row>.budget-month-arrow{
         box-sizing:border-box!important;
         position:relative!important;
         grid-row:2!important;
-        align-self:stretch!important;
+        align-self:center!important;
         justify-self:stretch!important;
         display:grid!important;
         place-items:center!important;
-        width:42px!important;
-        min-width:42px!important;
-        height:42px!important;
-        min-height:42px!important;
+        width:52px!important;
+        min-width:52px!important;
+        max-width:52px!important;
+        height:52px!important;
+        min-height:52px!important;
+        max-height:52px!important;
         margin:0!important;
         padding:0!important;
         border:1px solid #d7e7ea!important;
