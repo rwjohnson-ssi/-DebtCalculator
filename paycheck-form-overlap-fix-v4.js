@@ -1,13 +1,132 @@
 (() => {
   "use strict";
 
-  if (window.__debtWizardHelperBootstrapV40) return;
-  window.__debtWizardHelperBootstrapV40 = true;
+  if (window.__debtWizardHelperBootstrapV41) return;
+  window.__debtWizardHelperBootstrapV41 = true;
 
   const PAGE_KEY = "debtwizard-active-page";
   const currentScript = document.currentScript;
-  const coreUrl = new URL("debtwizard-helper-core-v38.js?cache=46", currentScript?.src || window.location.href).href;
+  const coreUrl = new URL("debtwizard-helper-core-v38.js?cache=47", currentScript?.src || window.location.href).href;
   let lastPointerActivation = 0;
+
+  function ensureMonthSelectorStyle() {
+    document.getElementById("dw-month-selector-layout-v41")?.remove();
+    const style = document.createElement("style");
+    style.id = "dw-month-selector-layout-v41";
+    style.textContent = `
+      html body .budget-month-tools .budget-month-row{
+        box-sizing:border-box!important;
+        display:grid!important;
+        grid-template-columns:42px minmax(0,1fr) 42px!important;
+        grid-template-rows:auto 42px!important;
+        column-gap:14px!important;
+        row-gap:6px!important;
+        align-items:stretch!important;
+        width:100%!important;
+        margin:0 0 12px!important;
+      }
+      html body .budget-month-tools .budget-month-row>.budget-month-picker{
+        box-sizing:border-box!important;
+        grid-column:2!important;
+        grid-row:1 / span 2!important;
+        display:grid!important;
+        grid-template-rows:auto 42px!important;
+        gap:6px!important;
+        align-items:stretch!important;
+        min-width:0!important;
+        width:100%!important;
+        margin:0!important;
+        padding:0!important;
+      }
+      html body .budget-month-tools .budget-month-row>.budget-month-picker>span{
+        display:block!important;
+        position:static!important;
+        width:100%!important;
+        margin:0!important;
+        padding:0!important;
+        color:#6d7b80!important;
+        font-size:.72rem!important;
+        font-weight:850!important;
+        line-height:1!important;
+        letter-spacing:.08em!important;
+        text-align:left!important;
+        text-transform:uppercase!important;
+        white-space:nowrap!important;
+      }
+      html body .budget-month-tools .budget-month-row>.budget-month-picker>input{
+        box-sizing:border-box!important;
+        display:block!important;
+        position:static!important;
+        width:100%!important;
+        min-width:0!important;
+        height:42px!important;
+        min-height:42px!important;
+        max-height:42px!important;
+        margin:0!important;
+        padding:8px 11px!important;
+        border:1px solid #d7e7ea!important;
+        border-radius:13px!important;
+        background:#fff!important;
+        color:#153f51!important;
+        font-size:1rem!important;
+        font-weight:900!important;
+        line-height:1!important;
+        letter-spacing:0!important;
+        text-align:center!important;
+        text-transform:none!important;
+        transform:none!important;
+      }
+      html body .budget-month-tools .budget-month-row>.budget-month-arrow{
+        box-sizing:border-box!important;
+        position:relative!important;
+        grid-row:2!important;
+        align-self:stretch!important;
+        justify-self:stretch!important;
+        display:grid!important;
+        place-items:center!important;
+        width:42px!important;
+        min-width:42px!important;
+        height:42px!important;
+        min-height:42px!important;
+        margin:0!important;
+        padding:0!important;
+        border:1px solid #d7e7ea!important;
+        border-radius:13px!important;
+        background:#fff!important;
+        color:#0f7893!important;
+        font-size:0!important;
+        line-height:0!important;
+        transform:none!important;
+        -webkit-appearance:none!important;
+        appearance:none!important;
+      }
+      html body .budget-month-tools .budget-month-row>[data-act="budget-month-prev"]{
+        grid-column:1!important;
+      }
+      html body .budget-month-tools .budget-month-row>[data-act="budget-month-next"]{
+        grid-column:3!important;
+      }
+      html body .budget-month-tools .budget-month-row>.budget-month-arrow::before{
+        content:""!important;
+        position:absolute!important;
+        left:50%!important;
+        top:50%!important;
+        box-sizing:border-box!important;
+        width:10px!important;
+        height:10px!important;
+        border-left:3px solid currentColor!important;
+        border-bottom:3px solid currentColor!important;
+        transform-origin:center!important;
+      }
+      html body .budget-month-tools .budget-month-row>[data-act="budget-month-prev"]::before{
+        transform:translate(-38%,-50%) rotate(45deg)!important;
+      }
+      html body .budget-month-tools .budget-month-row>[data-act="budget-month-next"]::before{
+        transform:translate(-62%,-50%) rotate(225deg)!important;
+      }
+    `;
+    document.head.appendChild(style);
+  }
 
   function navMoreButton(target) {
     if (!(target instanceof Element)) return null;
@@ -131,6 +250,8 @@
   window.addEventListener("keydown", event => {
     if (event.key === "Escape" && document.querySelector(".dw-more-menu")) closeMoreMenu();
   });
+
+  ensureMonthSelectorStyle();
 
   const existingCore = document.querySelector("script[data-debtwizard-core-v38]");
   if (!existingCore) {
