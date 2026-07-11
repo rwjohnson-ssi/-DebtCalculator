@@ -14,7 +14,7 @@
   </style>
 </head>
 <body>
-  <iframe id="app-host" title="DebtWizard" src="mobile.html?v=57" allow="clipboard-read; clipboard-write"></iframe>
+  <iframe id="app-host" title="DebtWizard" src="mobile.html?v=58" allow="clipboard-read; clipboard-write"></iframe>
   <script>
     (() => {
       "use strict";
@@ -43,21 +43,39 @@
       }
 
       function buttonText(button) {
-        return (button.getAttribute("aria-label") || button.textContent || "")
+        return (button?.getAttribute("aria-label") || button?.textContent || "")
           .replace(/\s+/g, " ").trim().toLowerCase();
       }
 
+      function navigationButtons(doc) {
+        return [...doc.querySelectorAll(
+          "#dw-primary-nav button,#dw-primary-nav [role='button'],#tabbar button,#tabbar [role='button']"
+        )];
+      }
+
       function findNativeButton(doc, page) {
-        const exact = doc.querySelector(`#tabbar [data-page="${page}"]`);
+        const exact = doc.querySelector(
+          `#dw-primary-nav [data-page="${page}"],#tabbar [data-page="${page}"]`
+        );
         if (exact) return exact;
+
+        if (page === "transactions") {
+          const transactionButton = doc.querySelector(
+            "#dw-primary-nav .dw-nav-plus,#tabbar .dw-nav-plus," +
+            "#dw-primary-nav [data-act*='trans'],#tabbar [data-act*='trans']," +
+            "#dw-primary-nav [data-action*='trans'],#tabbar [data-action*='trans']"
+          );
+          if (transactionButton) return transactionButton;
+        }
+
         const expected = {
           home: "home",
-          debts: "debts",
-          transactions: "transactions",
+          debts: "debt",
+          transactions: "transaction",
           budget: "budget"
         }[page];
         return expected
-          ? [...doc.querySelectorAll("#tabbar button")].find(button => buttonText(button).includes(expected)) || null
+          ? navigationButtons(doc).find(button => buttonText(button).includes(expected)) || null
           : null;
       }
 
@@ -68,13 +86,7 @@
           return;
         }
 
-        const hiddenPage = doc.querySelector(`#tabbar [data-page="${page}"]`);
-        if (hiddenPage) {
-          hiddenPage.click();
-          return;
-        }
-
-        const more = [...doc.querySelectorAll("#tabbar button")]
+        const more = navigationButtons(doc)
           .find(button => buttonText(button).includes("more"));
         if (!more) return;
         more.click();
@@ -82,9 +94,14 @@
       }
 
       function activePage(doc) {
-        const active = doc.querySelector("#tabbar [data-page].active");
+        const active = doc.querySelector(
+          "#dw-primary-nav [data-page].active,#tabbar [data-page].active"
+        );
         if (active?.dataset.page) return active.dataset.page;
-        const activeText = buttonText(doc.querySelector("#tabbar button.active") || document.createElement("button"));
+        const activeButton = doc.querySelector(
+          "#dw-primary-nav button.active,#tabbar button.active"
+        );
+        const activeText = buttonText(activeButton);
         if (activeText.includes("transaction")) return "transactions";
         if (activeText.includes("budget")) return "budget";
         if (activeText.includes("debt")) return "debts";
@@ -113,7 +130,8 @@
               body.dw-desktop-sidebar-ready.dw-desktop-sidebar-collapsed{--dw-active-sidebar:var(--dw-sidebar-collapsed)}
               body.dw-desktop-sidebar-ready #app-shell{box-sizing:border-box!important;min-height:100vh!important;padding-left:var(--dw-active-sidebar)!important;transition:padding-left .22s ease!important}
               body.dw-desktop-sidebar-ready #screen{width:100%!important;min-height:100vh!important;padding-bottom:0!important}
-              body.dw-desktop-sidebar-ready #tabbar{display:none!important}
+              body.dw-desktop-sidebar-ready #tabbar,
+              body.dw-desktop-sidebar-ready #dw-primary-nav{display:none!important}
               .dw-desktop-sidebar{position:fixed;z-index:1000;inset:0 auto 0 0;width:var(--dw-active-sidebar);box-sizing:border-box;display:flex;flex-direction:column;gap:7px;padding:22px 16px;background:linear-gradient(180deg,#073f5b 0%,#07536f 100%);box-shadow:10px 0 30px rgba(10,57,76,.12);overflow:hidden auto;transition:width .22s ease,padding .22s ease}
               .dw-desktop-sidebar-head{display:grid;grid-template-columns:minmax(0,1fr) 42px;align-items:center;gap:10px;min-height:54px;margin-bottom:16px;padding:0 4px 14px;border-bottom:1px solid rgba(255,255,255,.12)}
               .dw-desktop-sidebar-brand{min-width:0;color:#fff;font-size:1.28rem;font-weight:900;white-space:nowrap;overflow:hidden}
