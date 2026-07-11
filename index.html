@@ -14,7 +14,214 @@
   </style>
 </head>
 <body>
-  <!-- Keep the public root URL stable while loading the existing application shell once. -->
-  <iframe id="app-host" title="DebtWizard" src="mobile.html?v=56" allow="clipboard-read; clipboard-write"></iframe>
+  <iframe id="app-host" title="DebtWizard" src="mobile.html?v=57" allow="clipboard-read; clipboard-write"></iframe>
+  <script>
+    (() => {
+      "use strict";
+
+      const host = document.getElementById("app-host");
+      const desktopQuery = window.matchMedia("(min-width: 900px)");
+      const collapsedKey = "debtwizard-desktop-sidebar-collapsed";
+      const items = [
+        { page: "home", label: "Home", icon: "⌂" },
+        { page: "debts", label: "Debts", icon: "◔" },
+        { page: "transactions", label: "Transactions", icon: "$" },
+        { page: "budget", label: "Budget", icon: "$" },
+        { page: "strategy", label: "Payoff Strategy", icon: "✦" },
+        { page: "plan", label: "Debt Payoff Plan", icon: "▤" },
+        { page: "track", label: "Debt Payment Tracking", icon: "✓" }
+      ];
+
+      function readCollapsed() {
+        try { return localStorage.getItem(collapsedKey) === "1"; }
+        catch { return false; }
+      }
+
+      function saveCollapsed(value) {
+        try { localStorage.setItem(collapsedKey, value ? "1" : "0"); }
+        catch {}
+      }
+
+      function buttonText(button) {
+        return (button.getAttribute("aria-label") || button.textContent || "")
+          .replace(/\s+/g, " ").trim().toLowerCase();
+      }
+
+      function findNativeButton(doc, page) {
+        const exact = doc.querySelector(`#tabbar [data-page="${page}"]`);
+        if (exact) return exact;
+        const expected = {
+          home: "home",
+          debts: "debts",
+          transactions: "transactions",
+          budget: "budget"
+        }[page];
+        return expected
+          ? [...doc.querySelectorAll("#tabbar button")].find(button => buttonText(button).includes(expected)) || null
+          : null;
+      }
+
+      function navigate(doc, page) {
+        const direct = findNativeButton(doc, page);
+        if (direct) {
+          direct.click();
+          return;
+        }
+
+        const hiddenPage = doc.querySelector(`#tabbar [data-page="${page}"]`);
+        if (hiddenPage) {
+          hiddenPage.click();
+          return;
+        }
+
+        const more = [...doc.querySelectorAll("#tabbar button")]
+          .find(button => buttonText(button).includes("more"));
+        if (!more) return;
+        more.click();
+        setTimeout(() => doc.querySelector(`[data-dw-more-page="${page}"]`)?.click(), 40);
+      }
+
+      function activePage(doc) {
+        const active = doc.querySelector("#tabbar [data-page].active");
+        if (active?.dataset.page) return active.dataset.page;
+        const activeText = buttonText(doc.querySelector("#tabbar button.active") || document.createElement("button"));
+        if (activeText.includes("transaction")) return "transactions";
+        if (activeText.includes("budget")) return "budget";
+        if (activeText.includes("debt")) return "debts";
+        try {
+          return doc.defaultView.localStorage.getItem("debtwizard-active-page") || "home";
+        } catch {
+          return "home";
+        }
+      }
+
+      function installDesktop(doc) {
+        const old = doc.getElementById("dw-desktop-sidebar");
+        if (!desktopQuery.matches) {
+          old?.remove();
+          doc.body.classList.remove("dw-desktop-sidebar-ready", "dw-desktop-sidebar-collapsed");
+          return;
+        }
+
+        if (!doc.getElementById("dw-desktop-sidebar-style")) {
+          const style = doc.createElement("style");
+          style.id = "dw-desktop-sidebar-style";
+          style.textContent = `
+            @media (min-width:900px){
+              :root{--dw-sidebar-width:286px;--dw-sidebar-collapsed:88px}
+              body.dw-desktop-sidebar-ready{--dw-active-sidebar:var(--dw-sidebar-width);background:#eef3f5!important}
+              body.dw-desktop-sidebar-ready.dw-desktop-sidebar-collapsed{--dw-active-sidebar:var(--dw-sidebar-collapsed)}
+              body.dw-desktop-sidebar-ready #app-shell{box-sizing:border-box!important;min-height:100vh!important;padding-left:var(--dw-active-sidebar)!important;transition:padding-left .22s ease!important}
+              body.dw-desktop-sidebar-ready #screen{width:100%!important;min-height:100vh!important;padding-bottom:0!important}
+              body.dw-desktop-sidebar-ready #tabbar{display:none!important}
+              .dw-desktop-sidebar{position:fixed;z-index:1000;inset:0 auto 0 0;width:var(--dw-active-sidebar);box-sizing:border-box;display:flex;flex-direction:column;gap:7px;padding:22px 16px;background:linear-gradient(180deg,#073f5b 0%,#07536f 100%);box-shadow:10px 0 30px rgba(10,57,76,.12);overflow:hidden auto;transition:width .22s ease,padding .22s ease}
+              .dw-desktop-sidebar-head{display:grid;grid-template-columns:minmax(0,1fr) 42px;align-items:center;gap:10px;min-height:54px;margin-bottom:16px;padding:0 4px 14px;border-bottom:1px solid rgba(255,255,255,.12)}
+              .dw-desktop-sidebar-brand{min-width:0;color:#fff;font-size:1.28rem;font-weight:900;white-space:nowrap;overflow:hidden}
+              .dw-desktop-sidebar-toggle{width:42px;height:42px;border:0;border-radius:11px;background:rgba(255,255,255,.1);color:#fff;font-size:1.25rem;cursor:pointer}
+              .dw-desktop-sidebar-toggle:hover{background:rgba(255,255,255,.18)}
+              .dw-desktop-sidebar-nav{display:flex;flex-direction:column;gap:7px}
+              .dw-desktop-sidebar-button{width:100%;min-height:56px;display:grid;grid-template-columns:38px minmax(0,1fr);align-items:center;gap:12px;padding:10px 13px;border:0;border-radius:14px;background:transparent;color:#e2f0f4;font:inherit;font-size:.98rem;font-weight:800;text-align:left;white-space:nowrap;cursor:pointer;transition:background .16s ease,color .16s ease,box-shadow .16s ease}
+              .dw-desktop-sidebar-button:hover{background:rgba(255,255,255,.1)}
+              .dw-desktop-sidebar-button.active{background:linear-gradient(135deg,#0787ae,#19b9d3);color:#fff;box-shadow:0 10px 20px rgba(0,29,43,.2)}
+              .dw-desktop-sidebar-icon{width:38px;display:grid;place-items:center;font-size:1.45rem;line-height:1}
+              .dw-desktop-sidebar-label{min-width:0;overflow:hidden;text-overflow:ellipsis}
+              body.dw-desktop-sidebar-collapsed .dw-desktop-sidebar{padding-left:12px;padding-right:12px}
+              body.dw-desktop-sidebar-collapsed .dw-desktop-sidebar-head{grid-template-columns:1fr;justify-items:center;padding-left:0;padding-right:0}
+              body.dw-desktop-sidebar-collapsed .dw-desktop-sidebar-brand{display:none}
+              body.dw-desktop-sidebar-collapsed .dw-desktop-sidebar-button{grid-template-columns:1fr;justify-items:center;padding-left:8px;padding-right:8px}
+              body.dw-desktop-sidebar-collapsed .dw-desktop-sidebar-label{display:none}
+              body.dw-desktop-sidebar-ready .hero-content,
+              body.dw-desktop-sidebar-ready .container,
+              body.dw-desktop-sidebar-ready .hero-inner,
+              body.dw-desktop-sidebar-ready .page-wrap,
+              body.dw-desktop-sidebar-ready .dw-trans-top,
+              body.dw-desktop-sidebar-ready .dw-trans-search,
+              body.dw-desktop-sidebar-ready .dw-trans-wrap{width:min(calc(100% - 72px),1280px)!important;max-width:1280px!important;margin-left:auto!important;margin-right:auto!important}
+              body.dw-desktop-sidebar-ready .hero,
+              body.dw-desktop-sidebar-ready .mobile-hero{padding-left:48px!important;padding-right:48px!important}
+              body.dw-desktop-sidebar-ready .rounded-sheet,
+              body.dw-desktop-sidebar-ready .page-sheet{min-height:calc(100vh - 170px)!important}
+              body.dw-desktop-sidebar-ready .summary-grid,
+              body.dw-desktop-sidebar-ready .stats-grid{gap:18px!important}
+              body.dw-desktop-sidebar-ready .metric-row{gap:18px!important}
+              body.dw-desktop-sidebar-ready .metric-card,
+              body.dw-desktop-sidebar-ready .stat-tile{border-radius:18px!important;padding:20px!important}
+              body.dw-desktop-sidebar-ready .modal-backdrop{padding-left:var(--dw-active-sidebar)!important;transition:padding-left .22s ease!important}
+            }
+          `;
+          doc.head.appendChild(style);
+        }
+
+        let sidebar = old;
+        if (!sidebar) {
+          sidebar = doc.createElement("aside");
+          sidebar.id = "dw-desktop-sidebar";
+          sidebar.className = "dw-desktop-sidebar";
+          sidebar.setAttribute("aria-label", "Desktop navigation");
+          sidebar.innerHTML = `
+            <div class="dw-desktop-sidebar-head">
+              <div class="dw-desktop-sidebar-brand">DebtWizard</div>
+              <button type="button" class="dw-desktop-sidebar-toggle" aria-label="Collapse navigation">←</button>
+            </div>
+            <nav class="dw-desktop-sidebar-nav">
+              ${items.map(item => `<button type="button" class="dw-desktop-sidebar-button" data-dw-page="${item.page}"><span class="dw-desktop-sidebar-icon" aria-hidden="true">${item.icon}</span><span class="dw-desktop-sidebar-label">${item.label}</span></button>`).join("")}
+            </nav>`;
+          doc.body.appendChild(sidebar);
+
+          sidebar.addEventListener("click", event => {
+            const toggle = event.target.closest(".dw-desktop-sidebar-toggle");
+            if (toggle) {
+              const collapsed = !doc.body.classList.contains("dw-desktop-sidebar-collapsed");
+              doc.body.classList.toggle("dw-desktop-sidebar-collapsed", collapsed);
+              toggle.textContent = collapsed ? "☰" : "←";
+              toggle.setAttribute("aria-label", collapsed ? "Expand navigation" : "Collapse navigation");
+              saveCollapsed(collapsed);
+              return;
+            }
+            const button = event.target.closest("[data-dw-page]");
+            if (button) navigate(doc, button.dataset.dwPage);
+          });
+        }
+
+        const collapsed = readCollapsed();
+        doc.body.classList.add("dw-desktop-sidebar-ready");
+        doc.body.classList.toggle("dw-desktop-sidebar-collapsed", collapsed);
+        const toggle = sidebar.querySelector(".dw-desktop-sidebar-toggle");
+        toggle.textContent = collapsed ? "☰" : "←";
+        toggle.setAttribute("aria-label", collapsed ? "Expand navigation" : "Collapse navigation");
+
+        const sync = () => {
+          const page = activePage(doc);
+          sidebar.querySelectorAll("[data-dw-page]").forEach(button => {
+            button.classList.toggle("active", button.dataset.dwPage === page);
+          });
+        };
+        sync();
+
+        if (!doc.body.dataset.dwDesktopObserver) {
+          doc.body.dataset.dwDesktopObserver = "true";
+          new MutationObserver(sync).observe(doc.body, { childList:true, subtree:true, attributes:true, attributeFilter:["class"] });
+        }
+      }
+
+      function apply() {
+        try {
+          const doc = host.contentDocument;
+          if (!doc?.body) return;
+          installDesktop(doc);
+        } catch (error) {
+          console.error("Desktop navigation could not be installed.", error);
+        }
+      }
+
+      host.addEventListener("load", () => {
+        apply();
+        setTimeout(apply, 250);
+        setTimeout(apply, 900);
+      });
+      desktopQuery.addEventListener?.("change", apply);
+      window.addEventListener("resize", apply);
+    })();
+  </script>
 </body>
 </html>
