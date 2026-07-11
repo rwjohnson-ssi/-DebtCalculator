@@ -14,7 +14,7 @@
   </style>
 </head>
 <body>
-  <iframe id="app-host" title="DebtWizard" src="mobile.html?v=58" allow="clipboard-read; clipboard-write"></iframe>
+  <iframe id="app-host" title="DebtWizard" src="mobile.html?v=59" allow="clipboard-read; clipboard-write"></iframe>
   <script>
     (() => {
       "use strict";
@@ -62,6 +62,8 @@
         if (page === "transactions") {
           const transactionButton = doc.querySelector(
             "#dw-primary-nav .dw-nav-plus,#tabbar .dw-nav-plus," +
+            "#dw-primary-nav .dw-nav-transaction,#tabbar .dw-nav-transaction," +
+            "#dw-primary-nav [data-edp-trans-nav],#tabbar [data-edp-trans-nav]," +
             "#dw-primary-nav [data-act*='trans'],#tabbar [data-act*='trans']," +
             "#dw-primary-nav [data-action*='trans'],#tabbar [data-action*='trans']"
           );
@@ -110,6 +112,31 @@
         } catch {
           return "home";
         }
+      }
+
+      function repairMobileTransactionNavigation(doc) {
+        if (desktopQuery.matches) return;
+
+        const repair = () => {
+          const button = doc.querySelector(
+            "#dw-primary-nav .dw-nav-transaction," +
+            "#dw-primary-nav .dw-nav-plus," +
+            "#dw-primary-nav [data-edp-trans-add]"
+          );
+          if (!button) return false;
+
+          button.removeAttribute("data-edp-trans-add");
+          button.setAttribute("data-edp-trans-nav", "");
+          button.setAttribute("aria-label", "Transactions");
+          const label = button.querySelector("span:last-child");
+          if (label) label.textContent = "Transactions";
+          return true;
+        };
+
+        repair();
+        if (doc.body.dataset.dwMobileTransactionRepair === "true") return;
+        doc.body.dataset.dwMobileTransactionRepair = "true";
+        new MutationObserver(repair).observe(doc.body, { childList:true, subtree:true });
       }
 
       function installDesktop(doc) {
@@ -226,9 +253,10 @@
         try {
           const doc = host.contentDocument;
           if (!doc?.body) return;
+          repairMobileTransactionNavigation(doc);
           installDesktop(doc);
         } catch (error) {
-          console.error("Desktop navigation could not be installed.", error);
+          console.error("Navigation could not be installed.", error);
         }
       }
 
