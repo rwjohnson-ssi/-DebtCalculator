@@ -1,0 +1,2 @@
+GitHub Pages recovery deployment marker.
+Restored from stable commit 859401789a3bd4d384feac0b411b622e666beb55 after the desktop sidebar build caused a blank page.
