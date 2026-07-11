@@ -14,7 +14,7 @@
   </style>
 </head>
 <body>
-  <iframe id="app-host" title="DebtWizard" src="mobile.html?v=61" allow="clipboard-read; clipboard-write"></iframe>
+  <iframe id="app-host" title="DebtWizard" src="mobile.html?v=62" allow="clipboard-read; clipboard-write"></iframe>
   <script>
     (() => {
       "use strict";
@@ -22,6 +22,7 @@
       const host = document.getElementById("app-host");
       const desktopQuery = window.matchMedia("(min-width: 900px)");
       const collapsedKey = "debtwizard-desktop-sidebar-collapsed";
+      const pageKey = "debtwizard-active-page";
       const items = [
         { page: "home", label: "Home", icon: "⌂" },
         { page: "debts", label: "Debts", icon: "◔" },
@@ -42,6 +43,14 @@
         catch {}
       }
 
+      function setPageIntent(doc, page) {
+        doc.body.dataset.dwPageIntent = page;
+        try {
+          doc.defaultView.localStorage.setItem(pageKey, page);
+          doc.defaultView.sessionStorage.setItem(pageKey, page);
+        } catch {}
+      }
+
       function buttonText(button) {
         return (button?.getAttribute("aria-label") || button?.textContent || "")
           .replace(/\s+/g, " ").trim().toLowerCase();
@@ -59,43 +68,68 @@
         );
         if (exact) return exact;
 
-        if (page === "transactions") {
-          const transactionButton = doc.querySelector(
-            "#dw-primary-nav .dw-nav-plus,#tabbar .dw-nav-plus," +
-            "#dw-primary-nav .dw-nav-transaction,#tabbar .dw-nav-transaction," +
-            "#dw-primary-nav [data-edp-trans-nav],#tabbar [data-edp-trans-nav]," +
-            "#dw-primary-nav [data-act*='trans'],#tabbar [data-act*='trans']," +
-            "#dw-primary-nav [data-action*='trans'],#tabbar [data-action*='trans']"
-          );
-          if (transactionButton) return transactionButton;
-        }
-
         const expected = {
           home: "home",
           debts: "debt",
-          transactions: "transaction",
-          budget: "budget"
+          budget: "budget",
+          strategy: "strategy",
+          plan: "plan",
+          track: "track"
         }[page];
         return expected
           ? navigationButtons(doc).find(button => buttonText(button).includes(expected)) || null
           : null;
       }
 
+      function closeMoreMenu(doc) {
+        doc.querySelector(".dw-more-backdrop")?.remove();
+        doc.querySelector(".dw-more-menu")?.remove();
+      }
+
+      function openTransactions(doc) {
+        setPageIntent(doc, "transactions");
+        closeMoreMenu(doc);
+        const nativeTrack = doc.querySelector('#tabbar .tab-btn[data-page="track"]');
+        if (!nativeTrack) return false;
+        nativeTrack.click();
+        return true;
+      }
+
+      function openTrack(doc) {
+        setPageIntent(doc, "track");
+        closeMoreMenu(doc);
+        const nativeTrack = doc.querySelector('#tabbar .tab-btn[data-page="track"]');
+        if (!nativeTrack) return false;
+
+        nativeTrack.click();
+        nativeTrack.classList.remove("active");
+        requestAnimationFrame(() => nativeTrack.classList.remove("active"));
+        setTimeout(() => nativeTrack.classList.remove("active"), 0);
+        return true;
+      }
+
       function navigate(doc, page) {
+        if (page === "transactions") return openTransactions(doc);
+        if (page === "track") return openTrack(doc);
+
+        setPageIntent(doc, page);
+        closeMoreMenu(doc);
         const direct = findNativeButton(doc, page);
         if (direct) {
           direct.click();
-          return;
+          return true;
         }
 
         const more = navigationButtons(doc)
           .find(button => buttonText(button).includes("more"));
-        if (!more) return;
+        if (!more) return false;
         more.click();
         setTimeout(() => doc.querySelector(`[data-dw-more-page="${page}"]`)?.click(), 40);
+        return true;
       }
 
       function activePage(doc) {
+        if (doc.body.dataset.dwPageIntent) return doc.body.dataset.dwPageIntent;
         const active = doc.querySelector(
           "#dw-primary-nav [data-page].active,#tabbar [data-page].active"
         );
@@ -108,61 +142,72 @@
         if (activeText.includes("budget")) return "budget";
         if (activeText.includes("debt")) return "debts";
         try {
-          return doc.defaultView.localStorage.getItem("debtwizard-active-page") || "home";
+          return doc.defaultView.localStorage.getItem(pageKey) || "home";
         } catch {
           return "home";
         }
       }
 
-      function installTransactionNavigationBridge(doc) {
-        const openTransactions = () => {
-          const nativeTransactionsPage = doc.querySelector('#tabbar .tab-btn[data-page="track"]');
-          if (!nativeTransactionsPage) return false;
-          nativeTransactionsPage.click();
-          return true;
-        };
+      function installNavigationRouting(doc) {
+        const win = doc.defaultView;
+        if (win.__dwResponsiveNavigationInstalled) return;
+        win.__dwResponsiveNavigationInstalled = true;
 
-        const repair = () => {
-          const button = doc.querySelector(
-            "#dw-primary-nav .dw-nav-transaction," +
-            "#dw-primary-nav .dw-nav-plus," +
-            "#dw-primary-nav [data-edp-trans-add]," +
-            "#dw-primary-nav [data-edp-trans-nav]"
+        win.addEventListener("click", event => {
+          const mobileTransaction = event.target.closest?.(
+            "#dw-primary-nav .dw-nav-transaction,#dw-primary-nav [data-edp-trans-nav]"
           );
-          if (!button) return false;
-
-          if (button.hasAttribute("data-edp-trans-add")) {
-            button.removeAttribute("data-edp-trans-add");
-          }
-          if (!button.hasAttribute("data-edp-trans-nav")) {
-            button.setAttribute("data-edp-trans-nav", "");
-          }
-          if (button.getAttribute("aria-label") !== "Transactions") {
-            button.setAttribute("aria-label", "Transactions");
+          if (mobileTransaction) {
+            event.preventDefault();
+            event.stopImmediatePropagation();
+            openTransactions(doc);
+            return;
           }
 
-          const label = button.querySelector("span:last-child");
-          if (label && label.textContent.trim() !== "Transactions") {
-            label.textContent = "Transactions";
+          const morePage = event.target.closest?.("[data-dw-more-page]");
+          if (!morePage) return;
+          const page = morePage.dataset.dwMorePage;
+          if (!["strategy", "plan", "track"].includes(page)) return;
+          event.preventDefault();
+          event.stopImmediatePropagation();
+          navigate(doc, page);
+        }, true);
+      }
+
+      function repairMobileNavigation(doc) {
+        const repair = () => {
+          const nav = doc.getElementById("dw-primary-nav");
+          if (!nav) return false;
+
+          const transaction = nav.querySelector(
+            ".dw-nav-transaction,.dw-nav-plus,[data-edp-trans-add],[data-edp-trans-nav]"
+          );
+          if (transaction) {
+            transaction.removeAttribute("data-edp-trans-add");
+            transaction.setAttribute("data-edp-trans-nav", "");
+            transaction.setAttribute("aria-label", "Transactions");
+            const label = transaction.querySelector("span:last-child");
+            if (label && label.textContent.trim() !== "Transactions") label.textContent = "Transactions";
           }
 
-          if (button.dataset.dwTransactionBridge !== "true") {
-            button.dataset.dwTransactionBridge = "true";
-            button.addEventListener("click", openTransactions);
+          const more = nav.querySelector(".dw-nav-more");
+          if (more) {
+            more.setAttribute("aria-label", "More navigation");
+            const label = more.querySelector("span:last-child");
+            if (label && label.textContent.trim() !== "More") label.textContent = "More";
           }
           return true;
         };
 
         repair();
-        if (doc.body.dataset.dwTransactionBridgeObserver === "true") return;
-        doc.body.dataset.dwTransactionBridgeObserver = "true";
-
-        let repairQueued = false;
+        if (doc.body.dataset.dwResponsiveNavObserver === "true") return;
+        doc.body.dataset.dwResponsiveNavObserver = "true";
+        let queued = false;
         new MutationObserver(() => {
-          if (repairQueued) return;
-          repairQueued = true;
+          if (queued) return;
+          queued = true;
           queueMicrotask(() => {
-            repairQueued = false;
+            queued = false;
             repair();
           });
         }).observe(doc.body, { childList:true, subtree:true });
@@ -274,7 +319,7 @@
 
         if (!doc.body.dataset.dwDesktopObserver) {
           doc.body.dataset.dwDesktopObserver = "true";
-          new MutationObserver(sync).observe(doc.body, { childList:true, subtree:true, attributes:true, attributeFilter:["class"] });
+          new MutationObserver(sync).observe(doc.body, { childList:true, subtree:true, attributes:true, attributeFilter:["class","data-dw-page-intent"] });
         }
       }
 
@@ -282,7 +327,8 @@
         try {
           const doc = host.contentDocument;
           if (!doc?.body) return;
-          installTransactionNavigationBridge(doc);
+          installNavigationRouting(doc);
+          repairMobileNavigation(doc);
           installDesktop(doc);
         } catch (error) {
           console.error("Navigation could not be installed.", error);
