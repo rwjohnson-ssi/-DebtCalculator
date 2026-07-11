@@ -14,7 +14,7 @@
   </style>
 </head>
 <body>
-  <iframe id="app-host" title="DebtWizard" src="mobile.html?v=60" allow="clipboard-read; clipboard-write"></iframe>
+  <iframe id="app-host" title="DebtWizard" src="mobile.html?v=61" allow="clipboard-read; clipboard-write"></iframe>
   <script>
     (() => {
       "use strict";
@@ -114,14 +114,20 @@
         }
       }
 
-      function repairMobileTransactionNavigation(doc) {
-        if (desktopQuery.matches) return;
+      function installTransactionNavigationBridge(doc) {
+        const openTransactions = () => {
+          const nativeTransactionsPage = doc.querySelector('#tabbar .tab-btn[data-page="track"]');
+          if (!nativeTransactionsPage) return false;
+          nativeTransactionsPage.click();
+          return true;
+        };
 
         const repair = () => {
           const button = doc.querySelector(
             "#dw-primary-nav .dw-nav-transaction," +
             "#dw-primary-nav .dw-nav-plus," +
-            "#dw-primary-nav [data-edp-trans-add]"
+            "#dw-primary-nav [data-edp-trans-add]," +
+            "#dw-primary-nav [data-edp-trans-nav]"
           );
           if (!button) return false;
 
@@ -139,12 +145,17 @@
           if (label && label.textContent.trim() !== "Transactions") {
             label.textContent = "Transactions";
           }
+
+          if (button.dataset.dwTransactionBridge !== "true") {
+            button.dataset.dwTransactionBridge = "true";
+            button.addEventListener("click", openTransactions);
+          }
           return true;
         };
 
         repair();
-        if (doc.body.dataset.dwMobileTransactionRepair === "true") return;
-        doc.body.dataset.dwMobileTransactionRepair = "true";
+        if (doc.body.dataset.dwTransactionBridgeObserver === "true") return;
+        doc.body.dataset.dwTransactionBridgeObserver = "true";
 
         let repairQueued = false;
         new MutationObserver(() => {
@@ -271,7 +282,7 @@
         try {
           const doc = host.contentDocument;
           if (!doc?.body) return;
-          repairMobileTransactionNavigation(doc);
+          installTransactionNavigationBridge(doc);
           installDesktop(doc);
         } catch (error) {
           console.error("Navigation could not be installed.", error);
