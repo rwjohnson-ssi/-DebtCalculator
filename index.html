@@ -14,7 +14,7 @@
   </style>
 </head>
 <body>
-  <iframe id="app-host" title="DebtWizard" src="mobile.html?v=59" allow="clipboard-read; clipboard-write"></iframe>
+  <iframe id="app-host" title="DebtWizard" src="mobile.html?v=60" allow="clipboard-read; clipboard-write"></iframe>
   <script>
     (() => {
       "use strict";
@@ -125,18 +125,36 @@
           );
           if (!button) return false;
 
-          button.removeAttribute("data-edp-trans-add");
-          button.setAttribute("data-edp-trans-nav", "");
-          button.setAttribute("aria-label", "Transactions");
+          if (button.hasAttribute("data-edp-trans-add")) {
+            button.removeAttribute("data-edp-trans-add");
+          }
+          if (!button.hasAttribute("data-edp-trans-nav")) {
+            button.setAttribute("data-edp-trans-nav", "");
+          }
+          if (button.getAttribute("aria-label") !== "Transactions") {
+            button.setAttribute("aria-label", "Transactions");
+          }
+
           const label = button.querySelector("span:last-child");
-          if (label) label.textContent = "Transactions";
+          if (label && label.textContent.trim() !== "Transactions") {
+            label.textContent = "Transactions";
+          }
           return true;
         };
 
         repair();
         if (doc.body.dataset.dwMobileTransactionRepair === "true") return;
         doc.body.dataset.dwMobileTransactionRepair = "true";
-        new MutationObserver(repair).observe(doc.body, { childList:true, subtree:true });
+
+        let repairQueued = false;
+        new MutationObserver(() => {
+          if (repairQueued) return;
+          repairQueued = true;
+          queueMicrotask(() => {
+            repairQueued = false;
+            repair();
+          });
+        }).observe(doc.body, { childList:true, subtree:true });
       }
 
       function installDesktop(doc) {
