@@ -14,7 +14,7 @@
   </style>
 </head>
 <body>
-  <iframe id="app-host" title="DebtWizard" src="mobile.html?v=62" allow="clipboard-read; clipboard-write"></iframe>
+  <iframe id="app-host" title="DebtWizard" src="mobile.html?v=63" allow="clipboard-read; clipboard-write"></iframe>
   <script>
     (() => {
       "use strict";
@@ -89,22 +89,28 @@
       function openTransactions(doc) {
         setPageIntent(doc, "transactions");
         closeMoreMenu(doc);
-        const nativeTrack = doc.querySelector('#tabbar .tab-btn[data-page="track"]');
-        if (!nativeTrack) return false;
-        nativeTrack.click();
+
+        const nativeTransactions = doc.querySelector(
+          "#dw-primary-nav [data-edp-trans-nav],#tabbar [data-edp-trans-nav]"
+        );
+        if (!nativeTransactions) return false;
+
+        nativeTransactions.dataset.dwNativeTransactionOpen = "true";
+        nativeTransactions.click();
+        delete nativeTransactions.dataset.dwNativeTransactionOpen;
         return true;
       }
 
       function openTrack(doc) {
         setPageIntent(doc, "track");
         closeMoreMenu(doc);
+        delete doc.body.dataset.debtwizardPage;
+        const screen = doc.getElementById("screen");
+        if (screen) screen.dataset.transactionsShell = "";
+
         const nativeTrack = doc.querySelector('#tabbar .tab-btn[data-page="track"]');
         if (!nativeTrack) return false;
-
         nativeTrack.click();
-        nativeTrack.classList.remove("active");
-        requestAnimationFrame(() => nativeTrack.classList.remove("active"));
-        setTimeout(() => nativeTrack.classList.remove("active"), 0);
         return true;
       }
 
@@ -158,6 +164,7 @@
             "#dw-primary-nav .dw-nav-transaction,#dw-primary-nav [data-edp-trans-nav]"
           );
           if (mobileTransaction) {
+            if (mobileTransaction.dataset.dwNativeTransactionOpen === "true") return;
             event.preventDefault();
             event.stopImmediatePropagation();
             openTransactions(doc);
