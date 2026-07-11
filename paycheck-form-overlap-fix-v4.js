@@ -1,15 +1,43 @@
 (() => {
   "use strict";
 
-  if (window.__debtWizardHelperBootstrapV39) return;
-  window.__debtWizardHelperBootstrapV39 = true;
+  if (window.__debtWizardHelperBootstrapV40) return;
+  window.__debtWizardHelperBootstrapV40 = true;
 
   const PAGE_KEY = "debtwizard-active-page";
   const currentScript = document.currentScript;
-  const coreUrl = new URL("debtwizard-helper-core-v38.js?cache=45", currentScript?.src || window.location.href).href;
+  const coreUrl = new URL("debtwizard-helper-core-v38.js?cache=46", currentScript?.src || window.location.href).href;
+  let lastPointerActivation = 0;
+
+  function navMoreButton(target) {
+    if (!(target instanceof Element)) return null;
+    const button = target.closest("button,[role='button']");
+    if (!button || !button.closest("#dw-primary-nav,#tabbar")) return null;
+
+    const label = (button.getAttribute("aria-label") || "").trim().toLowerCase();
+    const text = (button.textContent || "").replace(/\s+/g, " ").trim().toLowerCase();
+    return button.matches(".dw-nav-more") || label === "more navigation" || text === "more" || text.endsWith(" more")
+      ? button
+      : null;
+  }
 
   function moreButtons() {
-    return document.querySelectorAll("#dw-primary-nav .dw-nav-more, #tabbar .dw-nav-more");
+    return [...document.querySelectorAll("#dw-primary-nav button,#tabbar button")].filter(button => navMoreButton(button));
+  }
+
+  function ensureMoreMenuStyle() {
+    if (document.getElementById("dw-more-controller-style-v40")) return;
+    const style = document.createElement("style");
+    style.id = "dw-more-controller-style-v40";
+    style.textContent = `
+      .dw-more-backdrop{position:fixed!important;inset:0!important;z-index:998!important;border:0!important;background:rgba(8,22,29,.35)!important;padding:0!important;margin:0!important}
+      .dw-more-menu{position:fixed!important;right:14px!important;bottom:calc(84px + env(safe-area-inset-bottom,0px))!important;z-index:999!important;width:min(280px,calc(100vw - 28px))!important;padding:10px!important;border:1px solid #dce8eb!important;border-radius:20px!important;background:#fff!important;box-shadow:0 18px 50px rgba(0,35,62,.28)!important}
+      .dw-more-menu button{box-sizing:border-box!important;width:100%!important;min-height:58px!important;border:0!important;border-bottom:1px solid #e7ecee!important;background:#fff!important;display:grid!important;grid-template-columns:38px minmax(0,1fr) auto!important;align-items:center!important;gap:10px!important;padding:8px 12px!important;color:#24323a!important;text-align:left!important;font:inherit!important;font-weight:850!important}
+      .dw-more-menu button:last-child{border-bottom:0!important}
+      .dw-more-icon,.dw-more-arrow{color:#0f7893!important}
+      .dw-more-arrow{font-size:1.5rem!important}
+    `;
+    document.head.appendChild(style);
   }
 
   function closeMoreMenu() {
@@ -19,11 +47,7 @@
   }
 
   function openMoreMenu() {
-    if (document.querySelector(".dw-more-menu")) {
-      closeMoreMenu();
-      return;
-    }
-
+    ensureMoreMenuStyle();
     closeMoreMenu();
     document.body.insertAdjacentHTML("beforeend", `
       <button type="button" class="dw-more-backdrop" data-dw-more-close aria-label="Close more navigation"></button>
@@ -45,9 +69,7 @@
         </button>
       </div>
     `);
-
     moreButtons().forEach(button => button.setAttribute("aria-expanded", "true"));
-    requestAnimationFrame(() => document.querySelector(".dw-more-menu [role=menuitem]")?.focus());
   }
 
   function saveActivePage(page) {
@@ -58,17 +80,32 @@
     } catch {}
   }
 
-  document.addEventListener("click", event => {
-    const moreButton = event.target.closest("#dw-primary-nav .dw-nav-more, #tabbar .dw-nav-more");
+  function activateMore(event) {
+    const button = navMoreButton(event.target);
+    if (!button) return false;
+    event.preventDefault();
+    event.stopPropagation();
+    event.stopImmediatePropagation();
+    openMoreMenu();
+    return true;
+  }
+
+  window.addEventListener("pointerup", event => {
+    if (!activateMore(event)) return;
+    lastPointerActivation = Date.now();
+  }, true);
+
+  window.addEventListener("click", event => {
+    const moreButton = navMoreButton(event.target);
     if (moreButton) {
       event.preventDefault();
       event.stopPropagation();
       event.stopImmediatePropagation();
-      openMoreMenu();
+      if (Date.now() - lastPointerActivation > 600) openMoreMenu();
       return;
     }
 
-    if (event.target.closest("[data-dw-more-close]")) {
+    if (event.target instanceof Element && event.target.closest("[data-dw-more-close]")) {
       event.preventDefault();
       event.stopPropagation();
       event.stopImmediatePropagation();
@@ -76,6 +113,7 @@
       return;
     }
 
+    if (!(event.target instanceof Element)) return;
     const pageButton = event.target.closest("[data-dw-more-page]");
     if (!pageButton) return;
 
@@ -86,14 +124,15 @@
     const page = pageButton.dataset.dwMorePage;
     closeMoreMenu();
     saveActivePage(page);
-    document.querySelector(`#tabbar .tab-btn[data-page="${page}"]`)?.click();
+    const nativePageButton = document.querySelector(`#tabbar .tab-btn[data-page="${page}"]`);
+    if (nativePageButton) nativePageButton.click();
   }, true);
 
-  document.addEventListener("keydown", event => {
+  window.addEventListener("keydown", event => {
     if (event.key === "Escape" && document.querySelector(".dw-more-menu")) closeMoreMenu();
   });
 
-  const existingCore = document.querySelector('script[data-debtwizard-core-v38]');
+  const existingCore = document.querySelector("script[data-debtwizard-core-v38]");
   if (!existingCore) {
     const script = document.createElement("script");
     script.src = coreUrl;
