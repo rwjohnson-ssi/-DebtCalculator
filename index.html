@@ -14,7 +14,7 @@
   </style>
 </head>
 <body>
-  <iframe id="app-host" title="DebtWizard" src="mobile.html?v=63" allow="clipboard-read; clipboard-write"></iframe>
+  <iframe id="app-host" title="DebtWizard" src="mobile.html?v=64" allow="clipboard-read; clipboard-write"></iframe>
   <script>
     (() => {
       "use strict";
@@ -23,6 +23,7 @@
       const desktopQuery = window.matchMedia("(min-width: 900px)");
       const collapsedKey = "debtwizard-desktop-sidebar-collapsed";
       const pageKey = "debtwizard-active-page";
+      const storeKey = "debt-calculator-v2";
       const items = [
         { page: "home", label: "Home", icon: "⌂" },
         { page: "debts", label: "Debts", icon: "◔" },
@@ -32,6 +33,12 @@
         { page: "plan", label: "Debt Payoff Plan", icon: "▤" },
         { page: "track", label: "Debt Payment Tracking", icon: "✓" }
       ];
+
+      const money = value => new Intl.NumberFormat("en-US", { style:"currency", currency:"USD" })
+        .format(Number.isFinite(Number(value)) ? Number(value) : 0);
+      const esc = value => String(value ?? "").replace(/[&<>"']/g, char => ({
+        "&":"&amp;", "<":"&lt;", ">":"&gt;", '"':"&quot;", "'":"&#39;"
+      }[char]));
 
       function readCollapsed() {
         try { return localStorage.getItem(collapsedKey) === "1"; }
@@ -49,6 +56,12 @@
           doc.defaultView.localStorage.setItem(pageKey, page);
           doc.defaultView.sessionStorage.setItem(pageKey, page);
         } catch {}
+      }
+
+      function clearTransactionState(doc) {
+        delete doc.body.dataset.debtwizardPage;
+        const screen = doc.getElementById("screen");
+        if (screen) screen.dataset.transactionsShell = "";
       }
 
       function buttonText(button) {
@@ -86,28 +99,147 @@
         doc.querySelector(".dw-more-menu")?.remove();
       }
 
+      function selectedMonth(doc) {
+        const title = doc.querySelector(".hero-title")?.textContent?.trim() || "";
+        const months = {
+          january:"01", february:"02", march:"03", april:"04", may:"05", june:"06",
+          july:"07", august:"08", september:"09", october:"10", november:"11", december:"12"
+        };
+        const match = title.match(/^([A-Za-z]+)\s+(20\d{2})$/);
+        if (match && months[match[1].toLowerCase()]) return `${match[2]}-${months[match[1].toLowerCase()]}`;
+        const now = new Date();
+        return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
+      }
+
+      function transactionData(doc) {
+        let state = {};
+        try { state = JSON.parse(doc.defaultView.localStorage.getItem(storeKey)) || {}; }
+        catch {}
+        const month = selectedMonth(doc);
+        const budget = state.settings?.monthlyBudgets?.[month] || {};
+        const transactions = Array.isArray(budget.transactions) ? [...budget.transactions] : [];
+        transactions.sort((a, b) => String(b.date || "").localeCompare(String(a.date || "")));
+        return { month, transactions };
+      }
+
+      function monthLabel(month) {
+        const [year, monthNumber] = String(month).split("-").map(Number);
+        return new Date(year, monthNumber - 1, 1).toLocaleDateString("en-US", { month:"long", year:"numeric" });
+      }
+
+      function transactionDate(value) {
+        const date = /^\d{4}-\d{2}-\d{2}$/.test(String(value || ""))
+          ? new Date(`${value}T12:00:00`)
+          : new Date();
+        return {
+          month: date.toLocaleDateString("en-US", { month:"short" }),
+          day: date.toLocaleDateString("en-US", { day:"numeric" })
+        };
+      }
+
+      function transactionCategory(transaction) {
+        const allocations = Array.isArray(transaction?.allocations) ? transaction.allocations : [];
+        const names = allocations.map(item => item?.budgetItemName).filter(Boolean);
+        return names.join(", ") || transaction?.budgetItemName || transaction?.category || "Unassigned";
+      }
+
+      function ensureTransactionStyle(doc) {
+        if (doc.getElementById("dw-restored-transactions-style-v64")) return;
+        const style = doc.createElement("style");
+        style.id = "dw-restored-transactions-style-v64";
+        style.textContent = `
+          .dw-trans-page{min-height:100vh;background:#f7fbfc;padding-bottom:118px}
+          .dw-trans-hero{background:linear-gradient(135deg,#cdeff4 0%,#eafcfe 100%);color:#0f516b;padding:calc(18px + env(safe-area-inset-top,0px)) 26px 22px;border-bottom:1px solid #b9e3ea}
+          .dw-trans-top{display:grid;grid-template-columns:72px 1fr 72px;align-items:center;margin-bottom:15px}
+          .dw-trans-title{text-align:center;font-size:1.12rem;font-weight:950}
+          .dw-trans-search{display:flex;align-items:center;gap:9px;background:#fff;border:1px solid #d6e7ea;border-radius:12px;padding:11px 14px;color:#7c8d93;box-shadow:0 8px 20px rgba(15,81,107,.08)}
+          .dw-trans-search input{width:100%;border:0;outline:0;background:transparent;color:#263137;font-size:1rem}
+          .dw-trans-wrap{padding:26px}
+          .dw-trans-card{overflow:hidden;background:#fff;border:1px solid #dce8eb;border-radius:20px;padding:18px;box-shadow:0 10px 26px rgba(15,81,107,.07)}
+          .dw-month-title{margin-bottom:10px;color:#47555b;font-weight:900}
+          .dw-tx-row{width:100%;display:grid;grid-template-columns:54px minmax(0,1fr) auto;align-items:center;gap:14px;border:0;border-top:1px solid #edf1f2;background:transparent;padding:14px 0;text-align:left;font:inherit}
+          .dw-tx-row:first-of-type{border-top:0}
+          .dw-date-dot{width:50px;height:50px;display:grid;place-items:center;border:2px solid #e3eaed;border-radius:50%;color:#53646b;text-align:center;font-size:.72rem;font-weight:900;line-height:1.05}
+          .dw-tx-name{color:#20272d;font-size:1.02rem;font-weight:850}
+          .dw-tx-cat{margin-top:4px;color:#0f7893;font-size:.8rem;font-weight:800}
+          .dw-tx-amount{color:#20272d;font-weight:900;white-space:nowrap}
+          .dw-trans-empty{padding:48px 8px 72px;text-align:center}
+          .dw-trans-empty h2{margin:0 0 14px;color:#171d23;font-size:2rem;line-height:1.08;text-align:left}
+          .dw-trans-empty p{margin:0 0 24px;color:#53646b;font-size:1rem;line-height:1.4;text-align:left}
+          .dw-first-btn{width:100%;min-height:54px;border:0;border-radius:13px;background:#004b75;color:#fff;font:inherit;font-weight:900}
+          .dw-trans-fab{position:fixed;right:24px;bottom:calc(96px + env(safe-area-inset-bottom,0px));z-index:135;width:64px;height:64px;border:0;border-radius:50%;background:#004b75;color:#fff;font-size:2.7rem;line-height:1;box-shadow:0 10px 28px rgba(0,35,62,.26)}
+          .dw-trans-no-results{display:none;padding:28px 16px;color:#66777e;text-align:center;font-weight:800}
+          .dw-trans-no-results.show{display:block}
+          @media(min-width:900px){.dw-trans-page{padding-bottom:40px}.dw-trans-fab{bottom:28px}.dw-trans-wrap{padding-top:34px}}
+        `;
+        doc.head.appendChild(style);
+      }
+
+      function setTransactionActive(doc) {
+        const nav = doc.getElementById("dw-primary-nav");
+        nav?.querySelectorAll(".active").forEach(button => button.classList.remove("active"));
+        nav?.querySelector(".dw-nav-transaction,[data-edp-trans-nav]")?.classList.add("active");
+      }
+
+      function renderTransactions(doc) {
+        const screen = doc.getElementById("screen");
+        if (!screen) return false;
+
+        ensureTransactionStyle(doc);
+        const { month, transactions } = transactionData(doc);
+        const rows = transactions.map(transaction => {
+          const date = transactionDate(transaction.date);
+          const name = transaction.merchant || transaction.source || "Transaction";
+          const amount = Math.max(0, Number(transaction.amount) || 0);
+          return `<button type="button" class="dw-tx-row" data-dw-edit-transaction="${esc(transaction.id || "")}">
+            <span class="dw-date-dot">${esc(date.month)}<br>${esc(date.day)}</span>
+            <span><span class="dw-tx-name">${esc(name)}</span><span class="dw-tx-cat">${esc(transactionCategory(transaction))}</span></span>
+            <span class="dw-tx-amount">${transaction.type === "income" ? "+" : "-"}${money(amount)}</span>
+          </button>`;
+        }).join("");
+
+        screen.dataset.transactionsShell = "1";
+        doc.body.dataset.debtwizardPage = "transactions";
+        screen.innerHTML = `<section class="dw-trans-page">
+          <header class="dw-trans-hero">
+            <div class="dw-trans-top"><span></span><div class="dw-trans-title">Transactions</div><span></span></div>
+            <label class="dw-trans-search"><span>⌕</span><input type="search" placeholder="Search transactions" aria-label="Search transactions"></label>
+          </header>
+          <main class="dw-trans-wrap">
+            ${transactions.length
+              ? `<article class="dw-trans-card"><div class="dw-month-title">${esc(monthLabel(month))}</div>${rows}<div class="dw-trans-no-results">No transactions match your search.</div></article>`
+              : `<section class="dw-trans-empty"><h2>Track your first transaction</h2><p>Enter an expense or income transaction and assign it to the correct budget item.</p><button type="button" class="dw-first-btn" data-edp-trans-add>Track My First Transaction</button></section>`}
+          </main>
+          <button type="button" class="dw-trans-fab" data-edp-trans-add aria-label="Add transaction">+</button>
+        </section>`;
+
+        const search = screen.querySelector(".dw-trans-search input");
+        search?.addEventListener("input", () => {
+          const query = search.value.trim().toLowerCase();
+          const transactionRows = [...screen.querySelectorAll(".dw-tx-row")];
+          let visible = 0;
+          transactionRows.forEach(row => {
+            const matches = !query || row.textContent.toLowerCase().includes(query);
+            row.hidden = !matches;
+            if (matches) visible += 1;
+          });
+          screen.querySelector(".dw-trans-no-results")?.classList.toggle("show", Boolean(query) && visible === 0);
+        });
+
+        setTransactionActive(doc);
+        return true;
+      }
+
       function openTransactions(doc) {
         setPageIntent(doc, "transactions");
         closeMoreMenu(doc);
-
-        const nativeTransactions = doc.querySelector(
-          "#dw-primary-nav [data-edp-trans-nav],#tabbar [data-edp-trans-nav]"
-        );
-        if (!nativeTransactions) return false;
-
-        nativeTransactions.dataset.dwNativeTransactionOpen = "true";
-        nativeTransactions.click();
-        delete nativeTransactions.dataset.dwNativeTransactionOpen;
-        return true;
+        return renderTransactions(doc);
       }
 
       function openTrack(doc) {
         setPageIntent(doc, "track");
         closeMoreMenu(doc);
-        delete doc.body.dataset.debtwizardPage;
-        const screen = doc.getElementById("screen");
-        if (screen) screen.dataset.transactionsShell = "";
-
+        clearTransactionState(doc);
         const nativeTrack = doc.querySelector('#tabbar .tab-btn[data-page="track"]');
         if (!nativeTrack) return false;
         nativeTrack.click();
@@ -118,6 +250,7 @@
         if (page === "transactions") return openTransactions(doc);
         if (page === "track") return openTrack(doc);
 
+        clearTransactionState(doc);
         setPageIntent(doc, page);
         closeMoreMenu(doc);
         const direct = findNativeButton(doc, page);
@@ -126,8 +259,7 @@
           return true;
         }
 
-        const more = navigationButtons(doc)
-          .find(button => buttonText(button).includes("more"));
+        const more = navigationButtons(doc).find(button => buttonText(button).includes("more"));
         if (!more) return false;
         more.click();
         setTimeout(() => doc.querySelector(`[data-dw-more-page="${page}"]`)?.click(), 40);
@@ -136,22 +268,15 @@
 
       function activePage(doc) {
         if (doc.body.dataset.dwPageIntent) return doc.body.dataset.dwPageIntent;
-        const active = doc.querySelector(
-          "#dw-primary-nav [data-page].active,#tabbar [data-page].active"
-        );
+        const active = doc.querySelector("#dw-primary-nav [data-page].active,#tabbar [data-page].active");
         if (active?.dataset.page) return active.dataset.page;
-        const activeButton = doc.querySelector(
-          "#dw-primary-nav button.active,#tabbar button.active"
-        );
+        const activeButton = doc.querySelector("#dw-primary-nav button.active,#tabbar button.active");
         const activeText = buttonText(activeButton);
         if (activeText.includes("transaction")) return "transactions";
         if (activeText.includes("budget")) return "budget";
         if (activeText.includes("debt")) return "debts";
-        try {
-          return doc.defaultView.localStorage.getItem(pageKey) || "home";
-        } catch {
-          return "home";
-        }
+        try { return doc.defaultView.localStorage.getItem(pageKey) || "home"; }
+        catch { return "home"; }
       }
 
       function installNavigationRouting(doc) {
@@ -160,11 +285,10 @@
         win.__dwResponsiveNavigationInstalled = true;
 
         win.addEventListener("click", event => {
-          const mobileTransaction = event.target.closest?.(
+          const transactionButton = event.target.closest?.(
             "#dw-primary-nav .dw-nav-transaction,#dw-primary-nav [data-edp-trans-nav]"
           );
-          if (mobileTransaction) {
-            if (mobileTransaction.dataset.dwNativeTransactionOpen === "true") return;
+          if (transactionButton) {
             event.preventDefault();
             event.stopImmediatePropagation();
             openTransactions(doc);
@@ -172,12 +296,34 @@
           }
 
           const morePage = event.target.closest?.("[data-dw-more-page]");
-          if (!morePage) return;
-          const page = morePage.dataset.dwMorePage;
-          if (!["strategy", "plan", "track"].includes(page)) return;
-          event.preventDefault();
-          event.stopImmediatePropagation();
-          navigate(doc, page);
+          if (morePage) {
+            const page = morePage.dataset.dwMorePage;
+            if (["strategy", "plan", "track"].includes(page)) {
+              event.preventDefault();
+              event.stopImmediatePropagation();
+              navigate(doc, page);
+              return;
+            }
+          }
+
+          const nativePage = event.target.closest?.(
+            "#dw-primary-nav [data-dw-page],#tabbar .tab-btn[data-page]"
+          );
+          if (nativePage?.dataset) {
+            const page = nativePage.dataset.dwPage || nativePage.dataset.page;
+            if (page && page !== "transactions") {
+              clearTransactionState(doc);
+              setPageIntent(doc, page);
+            }
+          }
+
+          if (event.target.closest?.(".dw-tx-done.dw-save-ready")) {
+            setTimeout(() => {
+              if (doc.body.dataset.dwPageIntent === "transactions" && !doc.querySelector(".dw-tx-root")) {
+                renderTransactions(doc);
+              }
+            }, 250);
+          }
         }, true);
       }
 
@@ -326,7 +472,12 @@
 
         if (!doc.body.dataset.dwDesktopObserver) {
           doc.body.dataset.dwDesktopObserver = "true";
-          new MutationObserver(sync).observe(doc.body, { childList:true, subtree:true, attributes:true, attributeFilter:["class","data-dw-page-intent"] });
+          new MutationObserver(sync).observe(doc.body, {
+            childList:true,
+            subtree:true,
+            attributes:true,
+            attributeFilter:["class", "data-dw-page-intent"]
+          });
         }
       }
 
