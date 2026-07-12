@@ -14,7 +14,7 @@
   </style>
 </head>
 <body>
-  <iframe id="app-host" title="DebtWizard" src="mobile.html?v=68" allow="clipboard-read; clipboard-write"></iframe>
+  <iframe id="app-host" title="DebtWizard" src="mobile.html?v=69" allow="clipboard-read; clipboard-write"></iframe>
   <script>
     (() => {
       "use strict";
@@ -69,9 +69,9 @@
       }
 
       function ensureStyles(doc) {
-        if (doc.getElementById("dw-transaction-route-v68")) return;
+        if (doc.getElementById("dw-transaction-route-v69")) return;
         const style = doc.createElement("style");
-        style.id = "dw-transaction-route-v68";
+        style.id = "dw-transaction-route-v69";
         style.textContent = `
           .dw-trans-page{min-height:calc(100vh - 74px);background:#f4f6f7;padding-bottom:118px;color:#172d38}
           .dw-trans-hero{background:linear-gradient(135deg,#cdeff4,#eafcfe);color:#0f516b;padding:calc(18px + env(safe-area-inset-top,0px)) 26px 22px;border-bottom:1px solid #b9e3ea}
@@ -217,24 +217,24 @@
         doc.body.appendChild(root);
       }
 
-      function removeDuplicateAllocationPanels(doc) {
+      function suppressFallbackAllocationPanel(doc) {
         const sheet = doc.querySelector(".dw-tx-sheet");
         if (!sheet) return;
-        const panels = [...sheet.querySelectorAll(".dw-tx-panel")].filter(panel =>
-          panel.classList.contains("dw-tx-selected-fallback") ||
-          (panel.querySelector('input[type="number"]') && /Left to Split/i.test(panel.textContent || ""))
-        );
-        if (panels.length <= 1) return;
-        const keep = [...panels].reverse().find(panel => panel.classList.contains("dw-tx-selected-fallback")) || panels.at(-1);
-        panels.forEach(panel => { if (panel !== keep) panel.remove(); });
+        const fallback = sheet.querySelector(".dw-tx-selected-fallback");
+        if (!fallback || fallback.dataset.dwAllocationSentinel === "1") return;
+        fallback.replaceChildren();
+        fallback.dataset.dwAllocationSentinel = "1";
+        fallback.hidden = true;
+        fallback.setAttribute("aria-hidden", "true");
+        fallback.style.setProperty("display", "none", "important");
       }
 
       function install(doc) {
         const win = doc.defaultView;
-        if (!doc.body || win.__dwTransactionRouteV68) return;
-        win.__dwTransactionRouteV68 = true;
+        if (!doc.body || win.__dwTransactionRouteV69) return;
+        win.__dwTransactionRouteV69 = true;
 
-        new win.MutationObserver(() => removeDuplicateAllocationPanels(doc))
+        new win.MutationObserver(() => suppressFallbackAllocationPanel(doc))
           .observe(doc.body, { childList:true, subtree:true });
 
         doc.addEventListener("click", event => {
