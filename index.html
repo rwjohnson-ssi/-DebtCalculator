@@ -14,7 +14,7 @@
   </style>
 </head>
 <body>
-  <iframe id="app-host" title="DebtWizard" src="mobile.html?v=69" allow="clipboard-read; clipboard-write"></iframe>
+  <iframe id="app-host" title="DebtWizard" src="mobile.html?v=70" allow="clipboard-read; clipboard-write"></iframe>
   <script>
     (() => {
       "use strict";
@@ -69,9 +69,9 @@
       }
 
       function ensureStyles(doc) {
-        if (doc.getElementById("dw-transaction-route-v69")) return;
+        if (doc.getElementById("dw-transaction-route-v70")) return;
         const style = doc.createElement("style");
-        style.id = "dw-transaction-route-v69";
+        style.id = "dw-transaction-route-v70";
         style.textContent = `
           .dw-trans-page{min-height:calc(100vh - 74px);background:#f4f6f7;padding-bottom:118px;color:#172d38}
           .dw-trans-hero{background:linear-gradient(135deg,#cdeff4,#eafcfe);color:#0f516b;padding:calc(18px + env(safe-area-inset-top,0px)) 26px 22px;border-bottom:1px solid #b9e3ea}
@@ -217,24 +217,29 @@
         doc.body.appendChild(root);
       }
 
-      function suppressFallbackAllocationPanel(doc) {
+      function preferNativeTransactionControls(doc) {
+        const nativeSelector = doc.querySelector(".dw-selector");
+        const fallbackSelector = doc.querySelector(".dw-selector-fallback");
+        if (nativeSelector && fallbackSelector) fallbackSelector.remove();
+
         const sheet = doc.querySelector(".dw-tx-sheet");
         if (!sheet) return;
-        const fallback = sheet.querySelector(".dw-tx-selected-fallback");
-        if (!fallback || fallback.dataset.dwAllocationSentinel === "1") return;
-        fallback.replaceChildren();
-        fallback.dataset.dwAllocationSentinel = "1";
-        fallback.hidden = true;
-        fallback.setAttribute("aria-hidden", "true");
-        fallback.style.setProperty("display", "none", "important");
+        const nativeAllocations = sheet.querySelector(".dw-tx-selected-items");
+        const fallbackAllocations = sheet.querySelector(".dw-tx-selected-fallback");
+        if (!nativeAllocations || !fallbackAllocations || fallbackAllocations.dataset.dwAllocationSentinel === "1") return;
+        fallbackAllocations.replaceChildren();
+        fallbackAllocations.dataset.dwAllocationSentinel = "1";
+        fallbackAllocations.hidden = true;
+        fallbackAllocations.setAttribute("aria-hidden", "true");
+        fallbackAllocations.style.setProperty("display", "none", "important");
       }
 
       function install(doc) {
         const win = doc.defaultView;
-        if (!doc.body || win.__dwTransactionRouteV69) return;
-        win.__dwTransactionRouteV69 = true;
+        if (!doc.body || win.__dwTransactionRouteV70) return;
+        win.__dwTransactionRouteV70 = true;
 
-        new win.MutationObserver(() => suppressFallbackAllocationPanel(doc))
+        new win.MutationObserver(() => preferNativeTransactionControls(doc))
           .observe(doc.body, { childList:true, subtree:true });
 
         doc.addEventListener("click", event => {
