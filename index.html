@@ -14,149 +14,89 @@
   </style>
 </head>
 <body>
-  <iframe id="app-host" title="DebtWizard" src="mobile.html?v=73" allow="clipboard-read; clipboard-write"></iframe>
+  <iframe id="app-host" title="DebtWizard" src="mobile.html?v=74" allow="clipboard-read; clipboard-write"></iframe>
   <script>
     (() => {
       "use strict";
 
       const host = document.getElementById("app-host");
-      const STORE = "debt-calculator-v2";
+      const STORAGE_KEY = "debt-calculator-v2";
       const PAGE_KEY = "debtwizard-active-page";
-      const money = value => new Intl.NumberFormat("en-US", { style:"currency", currency:"USD" })
-        .format(Number.isFinite(Number(value)) ? Number(value) : 0);
-      const number = value => Number.isFinite(Number.parseFloat(String(value ?? "").replace(/[^0-9.-]/g, "")))
-        ? Number.parseFloat(String(value ?? "").replace(/[^0-9.-]/g, "")) : 0;
+      const BUILD = "74";
+      const money = new Intl.NumberFormat("en-US", { style:"currency", currency:"USD" });
+      const validMonth = value => /^\d{4}-(0[1-9]|1[0-2])$/.test(String(value || ""));
+      const number = value => {
+        const parsed = Number.parseFloat(String(value ?? "").replace(/[^0-9.-]/g, ""));
+        return Number.isFinite(parsed) ? parsed : 0;
+      };
       const cents = value => Math.max(0, Math.round((number(value) + Number.EPSILON) * 100) / 100);
       const esc = value => String(value ?? "").replace(/[&<>"']/g, char => ({
         "&":"&amp;", "<":"&lt;", ">":"&gt;", '"':"&quot;", "'":"&#39;"
       }[char]));
-
-      function monthKey(doc) {
-        const text = doc.querySelector(".hero-title")?.textContent?.trim() || "";
-        const months = {
-          january:"01", february:"02", march:"03", april:"04", may:"05", june:"06",
-          july:"07", august:"08", september:"09", october:"10", november:"11", december:"12"
+      const todayKey = () => {
+        const date = new Date();
+        return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
+      };
+      const currentMonth = () => todayKey().slice(0, 7);
+      const monthLabel = value => {
+        const [year, month] = String(value).split("-").map(Number);
+        return new Date(year, month - 1, 1).toLocaleDateString("en-US", { month:"long", year:"numeric" });
+      };
+      const dayParts = value => {
+        const date = /^\d{4}-\d{2}-\d{2}$/.test(String(value || "")) ? new Date(`${value}T12:00:00`) : new Date();
+        return {
+          month:date.toLocaleDateString("en-US", { month:"short" }),
+          day:date.toLocaleDateString("en-US", { day:"numeric" })
         };
-        const match = text.match(/^([A-Za-z]+)\s+(20\d{2})$/);
-        if (match && months[match[1].toLowerCase()]) return `${match[2]}-${months[match[1].toLowerCase()]}`;
-        const now = new Date();
-        return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
+      };
+
+      function readState(win) {
+        try {
+          const parsed = JSON.parse(win.localStorage.getItem(STORAGE_KEY));
+          return parsed && typeof parsed === "object" ? parsed : {};
+        } catch {
+          return {};
+        }
       }
 
-      function loadBudget(doc) {
-        let state = {};
-        try { state = JSON.parse(doc.defaultView.localStorage.getItem(STORE)) || {}; }
-        catch {}
+      function writeState(win, state) {
+        win.localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+      }
+
+      function ensureState(state) {
         state.settings = state.settings && typeof state.settings === "object" ? state.settings : {};
         state.settings.monthlyBudgets = state.settings.monthlyBudgets && typeof state.settings.monthlyBudgets === "object"
           ? state.settings.monthlyBudgets : {};
-        const month = monthKey(doc);
-        const budget = state.settings.monthlyBudgets[month] || {};
+        state.settings.budgetTracking = state.settings.budgetTracking && typeof state.settings.budgetTracking === "object"
+          ? state.settings.budgetTracking : {};
+        state.ui = state.ui && typeof state.ui === "object" ? state.ui : {};
+        return state;
+      }
+
+      function budgetFor(state, month, create = false) {
+        const settings = ensureState(state).settings;
+        let budget = settings.monthlyBudgets[month];
+        if ((!budget || typeof budget !== "object") && create) {
+          budget = {
+            incomeSources:{}, budgetCategories:{}, incomeItems:[], bills:[],
+            transactions:[], schedule:{ buffer:0, income:{}, budget:{} },
+            createdAt:new Date().toISOString(), updatedAt:new Date().toISOString()
+          };
+          settings.monthlyBudgets[month] = budget;
+        }
+        if (!budget || typeof budget !== "object") return null;
+        budget.incomeItems = Array.isArray(budget.incomeItems) ? budget.incomeItems : [];
+        budget.bills = Array.isArray(budget.bills) ? budget.bills : [];
         budget.transactions = Array.isArray(budget.transactions) ? budget.transactions : [];
-        return { month, budget };
+        return budget;
       }
 
-      function dayLabel(value) {
-        const date = /^\d{4}-\d{2}-\d{2}$/.test(String(value || ""))
-          ? new Date(`${value}T12:00:00`) : new Date();
-        return {
-          month: date.toLocaleDateString("en-US", { month:"short" }),
-          day: date.toLocaleDateString("en-US", { day:"numeric" })
-        };
+      function selectedMonth(state) {
+        const month = state.ui?.budgetMonth;
+        return validMonth(month) ? month : currentMonth();
       }
 
-      function monthLabel(value) {
-        const [year, month] = String(value).split("-").map(Number);
-        return new Date(year, month - 1, 1).toLocaleDateString("en-US", { month:"long", year:"numeric" });
-      }
-
-      function ensureStyles(doc) {
-        if (doc.getElementById("dw-transaction-route-v73")) return;
-        const style = doc.createElement("style");
-        style.id = "dw-transaction-route-v73";
-        style.textContent = `
-          .dw-trans-page{min-height:calc(100vh - 74px);background:#f4f6f7;padding-bottom:118px;color:#172d38}
-          .dw-trans-hero{background:linear-gradient(135deg,#cdeff4,#eafcfe);color:#0f516b;padding:calc(18px + env(safe-area-inset-top,0px)) 26px 22px;border-bottom:1px solid #b9e3ea}
-          .dw-trans-top{display:grid;grid-template-columns:72px 1fr 72px;align-items:center;margin-bottom:15px}
-          .dw-trans-title{text-align:center;font-size:1.12rem;font-weight:950}
-          .dw-trans-search{display:flex;align-items:center;gap:9px;background:#fff;border:1px solid #d6e7ea;border-radius:12px;padding:11px 14px;color:#7c8d93;box-shadow:0 8px 20px rgba(15,81,107,.08)}
-          .dw-trans-search input{width:100%;border:0;outline:0;background:transparent;color:#263137;font-size:1rem}
-          .dw-trans-wrap{padding:26px}
-          .dw-trans-card{margin-bottom:22px;overflow:hidden;background:#fff;border:1px solid #dce8eb;border-radius:20px;padding:18px;box-shadow:0 10px 26px rgba(15,81,107,.07)}
-          .dw-deleted-row{width:100%;display:grid;grid-template-columns:34px 1fr auto;align-items:center;gap:12px;border:0;background:#fff;padding:2px;color:#1d3039;text-align:left;font:inherit;font-weight:900;font-size:1.02rem}
-          .dw-deleted-row span:first-child,.dw-deleted-row span:last-child{color:#0f7893;font-size:1.45rem}
-          .dw-month-title{margin-bottom:10px;color:#47555b;font-weight:900}
-          .dw-tx-row{display:grid;grid-template-columns:54px minmax(0,1fr) auto;align-items:center;gap:14px;padding:14px 0;border-top:1px solid #edf1f2}
-          .dw-tx-row:first-of-type{border-top:0}
-          .dw-date-dot{width:50px;height:50px;display:grid;place-items:center;border:2px solid #e3eaed;border-radius:50%;color:#53646b;text-align:center;font-size:.72rem;font-weight:900;line-height:1.05}
-          .dw-tx-name{display:block;color:#20272d;font-size:1.02rem;font-weight:850}
-          .dw-tx-cat{display:block;margin-top:4px;color:#0f7893;font-size:.8rem;font-weight:800}
-          .dw-tx-amount{color:#20272d;font-weight:900;white-space:nowrap}
-          .dw-trans-empty{padding:46px 8px 72px}
-          .dw-trans-empty h2{margin:0 0 14px;font-size:2rem;line-height:1.08}
-          .dw-trans-empty p{margin:0 0 24px;color:#53646b;line-height:1.4}
-          .dw-first-btn{width:100%;min-height:56px;border:0;border-radius:13px;background:linear-gradient(135deg,#0f7893,#27c7d8);color:#fff;font:inherit;font-weight:900}
-          .dw-trans-fab{position:fixed;right:24px;bottom:calc(96px + env(safe-area-inset-bottom,0px));z-index:135;width:64px;height:64px;border:0;border-radius:50%;background:linear-gradient(135deg,#0f7893,#27c7d8);color:#fff;font-size:2.7rem;line-height:1;box-shadow:0 10px 28px rgba(0,35,62,.26)}
-          .dw-trans-no-results{display:none;padding:24px;color:#68777d;text-align:center;font-weight:800}
-          .dw-trans-no-results.show{display:block}
-          .dw-tx-root{position:fixed;inset:0;z-index:1400}
-          .dw-tx-backdrop{position:absolute;inset:0;background:rgba(8,22,29,.35);backdrop-filter:blur(2px)}
-          .dw-tx-sheet{position:absolute;left:0;right:0;bottom:0;max-height:94vh;overflow:auto;background:#f4f6f7;border-radius:30px 30px 0 0;box-shadow:0 -24px 60px rgba(0,35,62,.25)}
-          .dw-tx-sheet-head{background:linear-gradient(135deg,#087b96,#27bfd2);color:#fff;border-radius:30px 30px 0 0;padding:12px 26px 20px}
-          .dw-tx-grabber{width:54px;height:6px;border-radius:999px;background:rgba(255,255,255,.48);margin:0 auto 18px}
-          .dw-tx-head-row{display:grid;grid-template-columns:82px 1fr 82px;align-items:center;font-weight:850}
-          .dw-tx-head-row strong{text-align:center;font-size:1.1rem}
-          .dw-tx-link{border:0;background:transparent;color:#fff;font-size:1rem;text-align:left}
-          .dw-tx-done{text-align:right;opacity:.58}
-          .dw-tx-done.dw-save-ready{opacity:1;cursor:pointer;pointer-events:auto}
-          .dw-tx-toggle{display:grid;grid-template-columns:1fr 1fr;background:rgba(0,83,105,.46);border-radius:11px;margin-top:18px;overflow:hidden}
-          .dw-tx-toggle button{border:0;background:transparent;color:#fff;padding:10px;font-size:1rem;font-weight:800}
-          .dw-tx-toggle button.active{background:rgba(255,255,255,.22);box-shadow:inset 0 0 0 2px rgba(255,255,255,.24)}
-          .dw-tx-body{padding:26px}
-          .dw-tx-panel{background:#fff;border-radius:20px;padding:0 26px;margin-bottom:26px}
-          .dw-tx-field{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.1fr);gap:14px;align-items:center;min-height:72px;border-bottom:1px solid #e6ebee}
-          .dw-tx-field:last-child{border-bottom:0}
-          .dw-tx-field span{font-size:1.05rem;color:#1f272d}
-          .dw-tx-field input{width:100%;min-width:0;border:0;outline:0;text-align:right;color:#0079a8;font-size:1.05rem;background:transparent}
-          .dw-tx-account{display:block;padding:17px 0 20px}
-          .dw-tx-account strong{display:block;font-size:1.05rem;color:#1f272d}
-          .dw-tx-account small{display:block;margin-top:6px;line-height:1.3;color:#4f5d63;font-size:.94rem}
-          .dw-tx-budget-row{border:0;width:100%;background:#fff;border-radius:20px;margin-bottom:26px;display:flex;align-items:center;justify-content:space-between;padding:21px 26px;font-size:1.05rem;color:#1f272d}
-          .dw-tx-budget-row em{font-style:normal;color:#0079a8;font-weight:850}
-          .dw-tx-note{box-sizing:border-box;width:100%;min-height:86px;border:0;border-radius:18px;background:#fff;padding:22px 26px;font-size:1.05rem;resize:none;outline:0}
-          .dw-direct-split{overflow:hidden;margin:0 0 12px;border:1px solid #dce8eb;border-radius:20px;background:#fff;box-shadow:0 8px 22px rgba(15,81,107,.06)}
-          .dw-direct-split-row{display:grid;grid-template-columns:32px minmax(0,1fr) 116px;align-items:center;gap:11px;min-height:64px;padding:0 16px;border-bottom:1px solid #e6edef}
-          .dw-direct-split-row:last-of-type{border-bottom:0}
-          .dw-direct-split-remove{width:28px;height:28px;border:0;border-radius:50%;background:#dc4d45;color:#fff;font-size:1.15rem;line-height:1}
-          .dw-direct-split-name{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:#24414d;font-weight:850}
-          .dw-direct-split-input{box-sizing:border-box;width:100%;min-width:0;min-height:44px;border:0;border-radius:10px;background:#f3f8fa;padding:8px;color:#087f9a;text-align:right;font-size:1rem;font-weight:850;outline:0}
-          .dw-direct-split-summary{padding:13px 16px;background:#075f87;color:#fff;text-align:center;font-weight:900}
-          .dw-direct-split-summary.over{background:#b8443d}
-          .dw-direct-selector{position:fixed;inset:0;z-index:1700;display:flex;flex-direction:column;background:#f4f7f8;color:#173f50}
-          .dw-direct-selector-head{padding:calc(14px + env(safe-area-inset-top,0px)) 18px 14px;background:linear-gradient(135deg,#087b96,#27bfd2);color:#fff}
-          .dw-direct-selector-top{display:grid;grid-template-columns:78px 1fr 78px;align-items:center}
-          .dw-direct-selector-top strong{text-align:center;font-size:1.08rem}
-          .dw-direct-selector-top button{border:0;background:transparent;color:#fff;padding:10px 0;font:inherit;font-weight:850}
-          .dw-direct-selector-top button:last-child{text-align:right}
-          .dw-direct-selector-search{display:flex;align-items:center;gap:9px;margin-top:12px;padding:11px 13px;border-radius:12px;background:#fff;color:#87969c}
-          .dw-direct-selector-search input{width:100%;border:0;outline:0;background:transparent;font-size:1rem}
-          .dw-direct-selector-body{flex:1;overflow:auto;padding:20px 18px calc(30px + env(safe-area-inset-bottom,0px))}
-          .dw-direct-selector-note{margin:0 0 14px;color:#63747b;line-height:1.35}
-          .dw-direct-selector-list{overflow:hidden;border:1px solid #dce8eb;border-radius:20px;background:#fff;box-shadow:0 10px 28px rgba(22,43,52,.06)}
-          .dw-direct-selector-item{width:100%;min-height:64px;display:grid;grid-template-columns:32px minmax(0,1fr) auto;align-items:center;gap:12px;border:0;border-bottom:1px solid #e7edef;background:#fff;padding:12px 16px;color:#26363d;text-align:left;font:inherit}
-          .dw-direct-selector-item:last-child{border-bottom:0}
-          .dw-direct-selector-item.selected{background:#eefafd}
-          .dw-direct-selector-check{width:26px;height:26px;display:grid;place-items:center;border:2px solid #9fb2b9;border-radius:8px;color:transparent;font-weight:900}
-          .dw-direct-selector-item.selected .dw-direct-selector-check{border-color:#0c91ad;background:#0c91ad;color:#fff}
-          .dw-direct-selector-item strong{font-weight:850}
-          .dw-direct-selector-item small{color:#68777d}
-          .dw-direct-selector-empty{padding:24px;color:#6f7d82;text-align:center}
-          @media(min-width:900px){.dw-trans-page{padding-bottom:40px}.dw-trans-fab{bottom:28px}.dw-tx-sheet{left:50%;right:auto;width:min(680px,calc(100vw - 40px));transform:translateX(-50%);border-radius:30px;bottom:24px}.dw-direct-selector-body{width:min(720px,calc(100% - 40px));margin:auto}}
-        `;
-        doc.head.appendChild(style);
-      }
-
-      function transactionNavButton(target) {
+      function transactionButton(target) {
         const button = target?.closest?.("#dw-primary-nav button,#tabbar button");
         if (!button) return null;
         const text = `${button.getAttribute("aria-label") || ""} ${button.textContent || ""}`.replace(/\s+/g, " ").trim().toLowerCase();
@@ -170,439 +110,488 @@
         button?.classList.add("active");
       }
 
-      function transactionRows(items) {
-        return items.map(item => {
-          const date = dayLabel(item.date);
-          const allocations = Array.isArray(item.allocations) ? item.allocations : [];
-          const category = allocations.map(entry => entry.budgetItemName || entry.name).filter(Boolean).join(", ")
-            || item.budgetItemName || item.category || "Unassigned";
-          return `<div class="dw-tx-row">
-            <span class="dw-date-dot">${esc(date.month)}<br>${esc(date.day)}</span>
-            <span><span class="dw-tx-name">${esc(item.merchant || item.source || "Transaction")}</span><span class="dw-tx-cat">${esc(category)}</span></span>
-            <span class="dw-tx-amount">${item.type === "income" ? "+" : "-"}${money(Math.max(0, number(item.amount)))}</span>
+      function injectStyles(doc) {
+        const id = `transaction-entry-v${BUILD}`;
+        if (doc.getElementById(id)) return;
+        doc.querySelectorAll('[id^="transaction-entry-v"]').forEach(node => node.remove());
+        const style = doc.createElement("style");
+        style.id = id;
+        style.textContent = `
+          .txe-page{min-height:calc(100vh - 74px);padding-bottom:116px;background:#f4f7f8;color:#17313d}
+          .txe-hero{padding:calc(18px + env(safe-area-inset-top,0px)) 24px 22px;background:linear-gradient(135deg,#cceff4,#eafcfe);border-bottom:1px solid #b9e3ea;color:#0f516b}
+          .txe-title{margin:0 0 16px;text-align:center;font-size:1.22rem;font-weight:950}
+          .txe-search{display:flex;align-items:center;gap:10px;padding:12px 15px;border:1px solid #d4e7ea;border-radius:14px;background:#fff;box-shadow:0 8px 22px rgba(15,81,107,.08)}
+          .txe-search input{width:100%;border:0;outline:0;background:transparent;color:#24343b;font-size:1rem}
+          .txe-wrap{padding:24px}
+          .txe-card{overflow:hidden;margin-bottom:20px;padding:18px;border:1px solid #dce8eb;border-radius:20px;background:#fff;box-shadow:0 10px 26px rgba(15,81,107,.07)}
+          .txe-month{margin-bottom:8px;color:#506169;font-weight:900}
+          .txe-row{display:grid;grid-template-columns:50px minmax(0,1fr) auto;align-items:center;gap:13px;padding:14px 0;border-top:1px solid #edf1f2}
+          .txe-row:first-of-type{border-top:0}
+          .txe-date{width:46px;height:46px;display:grid;place-items:center;border:2px solid #e2eaed;border-radius:50%;color:#53646b;text-align:center;font-size:.7rem;font-weight:900;line-height:1.05}
+          .txe-name{display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:#202b31;font-weight:900}
+          .txe-category{display:block;margin-top:4px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:#0f7893;font-size:.79rem;font-weight:800}
+          .txe-amount{color:#202b31;font-weight:950;white-space:nowrap}
+          .txe-empty{padding:52px 4px 68px}
+          .txe-empty h2{margin:0 0 14px;font-size:2rem;line-height:1.08}
+          .txe-empty p{margin:0 0 24px;color:#58676d;line-height:1.45}
+          .txe-primary{width:100%;min-height:56px;border:0;border-radius:14px;background:linear-gradient(135deg,#0f7893,#27c7d8);color:#fff;font:inherit;font-weight:950}
+          .txe-fab{position:fixed;right:24px;bottom:calc(96px + env(safe-area-inset-bottom,0px));z-index:135;width:64px;height:64px;border:0;border-radius:50%;background:linear-gradient(135deg,#0f7893,#27c7d8);color:#fff;font-size:2.7rem;line-height:1;box-shadow:0 12px 30px rgba(0,35,62,.26)}
+          .txe-no-results{display:none;padding:20px;color:#68777d;text-align:center;font-weight:850}
+          .txe-no-results.show{display:block}
+          .txe-root{position:fixed;inset:0;z-index:1600;background:#f4f7f8;color:#17313d;overflow:auto}
+          .txe-head{position:sticky;top:0;z-index:2;padding:calc(9px + env(safe-area-inset-top,0px)) 10px 12px;background:linear-gradient(135deg,#087b96,#27bfd2);color:#fff}
+          .txe-head-row{display:grid;grid-template-columns:88px minmax(0,1fr) 88px;align-items:center}
+          .txe-head-row strong{text-align:center;font-size:1.12rem}
+          .txe-link{border:0;background:transparent;color:#fff;font:inherit;font-weight:900}
+          .txe-link:last-child{text-align:right}
+          .txe-link:disabled{opacity:.5}
+          .txe-toggle{display:grid;grid-template-columns:1fr 1fr;overflow:hidden;margin-top:14px;border-radius:13px;background:rgba(0,83,105,.46)}
+          .txe-toggle button{border:0;background:transparent;color:#fff;padding:12px;font-size:1rem;font-weight:900}
+          .txe-toggle button.active{background:#fff;color:#087b96}
+          .txe-body{padding:24px 18px calc(36px + env(safe-area-inset-bottom,0px))}
+          .txe-panel{overflow:hidden;margin-bottom:22px;padding:0 22px;border:1px solid #dce8eb;border-radius:20px;background:#fff;box-shadow:0 8px 22px rgba(15,81,107,.06)}
+          .txe-field{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.1fr);gap:14px;align-items:center;min-height:72px;border-bottom:1px solid #e6ebee}
+          .txe-field:last-child{border-bottom:0}
+          .txe-field span{font-size:1.04rem;font-weight:900}
+          .txe-field input{box-sizing:border-box;width:100%;min-width:0;border:0;outline:0;background:transparent;color:#087f9a;text-align:right;font-size:1rem;font-weight:850}
+          .txe-account{padding:17px 0 20px}
+          .txe-account strong{display:block;font-size:1.04rem}
+          .txe-account small{display:block;margin-top:6px;color:#56676e;line-height:1.35}
+          .txe-budget-button{width:100%;display:flex;align-items:center;justify-content:space-between;margin-bottom:22px;padding:20px 22px;border:1px solid #dce8eb;border-radius:20px;background:#fff;color:#20323a;font:inherit;font-weight:900}
+          .txe-budget-button span:last-child{color:#087f9a}
+          .txe-allocations{overflow:hidden;margin-bottom:12px;border:1px solid #dce8eb;border-radius:20px;background:#fff;box-shadow:0 8px 22px rgba(15,81,107,.06)}
+          .txe-allocation{display:grid;grid-template-columns:32px minmax(0,1fr) 116px;align-items:center;gap:11px;min-height:64px;padding:0 16px;border-bottom:1px solid #e6edef}
+          .txe-allocation:last-of-type{border-bottom:0}
+          .txe-remove{width:28px;height:28px;border:0;border-radius:50%;background:#dc4d45;color:#fff;font-size:1.15rem;line-height:1}
+          .txe-allocation strong{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+          .txe-allocation input{box-sizing:border-box;width:100%;min-height:44px;border:0;border-radius:10px;background:#f3f8fa;padding:8px;color:#087f9a;text-align:right;font-size:1rem;font-weight:900;outline:0}
+          .txe-summary{padding:13px 16px;background:#075f87;color:#fff;text-align:center;font-weight:950}
+          .txe-summary.over{background:#b8443d}
+          .txe-note{box-sizing:border-box;width:100%;min-height:92px;border:1px solid #dce8eb;border-radius:18px;background:#fff;padding:18px 22px;font:inherit;resize:vertical;outline:0}
+          .txe-selector{position:fixed;inset:0;z-index:1700;display:flex;flex-direction:column;background:#f4f7f8;color:#173f50}
+          .txe-selector-head{padding:calc(10px + env(safe-area-inset-top,0px)) 16px 14px;background:linear-gradient(135deg,#087b96,#27bfd2);color:#fff}
+          .txe-selector-top{display:grid;grid-template-columns:78px 1fr 78px;align-items:center}
+          .txe-selector-top strong{text-align:center}
+          .txe-selector-top button{border:0;background:transparent;color:#fff;padding:10px 0;font:inherit;font-weight:900}
+          .txe-selector-top button:last-child{text-align:right}
+          .txe-selector-search{display:flex;align-items:center;gap:9px;margin-top:12px;padding:11px 13px;border-radius:12px;background:#fff;color:#87969c}
+          .txe-selector-search input{width:100%;border:0;outline:0;background:transparent;font-size:1rem}
+          .txe-selector-body{flex:1;overflow:auto;padding:20px 18px calc(30px + env(safe-area-inset-bottom,0px))}
+          .txe-selector-note{margin:0 0 14px;color:#63747b;line-height:1.35}
+          .txe-selector-list{overflow:hidden;border:1px solid #dce8eb;border-radius:20px;background:#fff}
+          .txe-choice{width:100%;min-height:64px;display:grid;grid-template-columns:32px minmax(0,1fr) auto;align-items:center;gap:12px;border:0;border-bottom:1px solid #e7edef;background:#fff;padding:12px 16px;color:#26363d;text-align:left;font:inherit}
+          .txe-choice:last-child{border-bottom:0}
+          .txe-choice.selected{background:#eefafd}
+          .txe-check{width:26px;height:26px;display:grid;place-items:center;border:2px solid #9fb2b9;border-radius:8px;color:transparent;font-weight:900}
+          .txe-choice.selected .txe-check{border-color:#0c91ad;background:#0c91ad;color:#fff}
+          .txe-choice small{color:#68777d}
+          .txe-selector-empty{padding:24px;color:#6f7d82;text-align:center}
+          @media(min-width:900px){
+            .txe-page{padding-bottom:40px}.txe-fab{bottom:28px}
+            .txe-root{left:50%;right:auto;width:min(720px,calc(100vw - 48px));transform:translateX(-50%);box-shadow:0 0 80px rgba(0,35,62,.22)}
+            .txe-selector-body{width:min(720px,calc(100% - 40px));margin:auto}
+          }
+        `;
+        doc.head.appendChild(style);
+      }
+
+      function allocationCategory(transaction) {
+        const allocations = Array.isArray(transaction.allocations) ? transaction.allocations : [];
+        return allocations.map(item => item.budgetItemName || item.name).filter(Boolean).join(", ")
+          || transaction.budgetItemName || transaction.category || "Unassigned";
+      }
+
+      function transactionRows(transactions) {
+        return transactions.map(transaction => {
+          const date = dayParts(transaction.date);
+          const amount = cents(transaction.amount);
+          return `<div class="txe-row" data-search="${esc(`${transaction.merchant || transaction.source || ""} ${allocationCategory(transaction)}`.toLowerCase())}">
+            <span class="txe-date">${esc(date.month)}<br>${esc(date.day)}</span>
+            <span><span class="txe-name">${esc(transaction.merchant || transaction.source || "Transaction")}</span><span class="txe-category">${esc(allocationCategory(transaction))}</span></span>
+            <span class="txe-amount">${transaction.type === "income" ? "+" : "-"}${money.format(amount)}</span>
           </div>`;
         }).join("");
       }
 
-      function renderTransactions(doc, activeButton) {
+      function renderTransactions(doc, activeButton, monthOverride = "") {
+        injectStyles(doc);
+        const win = doc.defaultView;
+        const state = ensureState(readState(win));
+        const month = validMonth(monthOverride) ? monthOverride : selectedMonth(state);
+        const budget = budgetFor(state, month, false);
+        const transactions = [...(budget?.transactions || [])]
+          .sort((a, b) => String(b.date || "").localeCompare(String(a.date || "")) || String(b.createdAt || "").localeCompare(String(a.createdAt || "")));
         const screen = doc.getElementById("screen");
         if (!screen) return;
-        ensureStyles(doc);
-        const { month, budget } = loadBudget(doc);
-        const transactions = [...budget.transactions].sort((a, b) => String(b.date || "").localeCompare(String(a.date || "")));
-        screen.dataset.transactionsShell = "1";
-        doc.body.dataset.debtwizardPage = "transactions";
-        screen.innerHTML = `<section class="dw-trans-page">
-          <header class="dw-trans-hero">
-            <div class="dw-trans-top"><span></span><div class="dw-trans-title">Transactions</div><span></span></div>
-            <label class="dw-trans-search"><span>⌕</span><input type="search" placeholder="Search transactions" aria-label="Search transactions"></label>
+        try {
+          win.localStorage.setItem(PAGE_KEY, "transactions");
+          win.sessionStorage.setItem(PAGE_KEY, "transactions");
+        } catch {}
+        screen.dataset.transactionsShell = "current";
+        screen.innerHTML = `<section class="txe-page">
+          <header class="txe-hero">
+            <h1 class="txe-title">Transactions</h1>
+            <label class="txe-search"><span>⌕</span><input type="search" placeholder="Search transactions" aria-label="Search transactions"></label>
           </header>
-          <main class="dw-trans-wrap">
-            <article class="dw-trans-card"><button type="button" class="dw-deleted-row"><span>♲</span><span>Deleted</span><span>›</span></button></article>
+          <main class="txe-wrap">
             ${transactions.length
-              ? `<article class="dw-trans-card"><div class="dw-month-title">${esc(monthLabel(month))}</div>${transactionRows(transactions)}<div class="dw-trans-no-results">No transactions match your search.</div></article>`
-              : `<section class="dw-trans-empty"><h2>Track your first transaction</h2><p>Enter an expense or income transaction and assign it to the correct budget item.</p><button type="button" class="dw-first-btn" data-edp-trans-add>Track My First Transaction</button></section>`}
+              ? `<article class="txe-card"><div class="txe-month">${esc(monthLabel(month))}</div>${transactionRows(transactions)}<div class="txe-no-results">No transactions match your search.</div></article>`
+              : `<section class="txe-empty"><h2>Track your first transaction</h2><p>Enter an expense or income transaction and assign it to the correct budget item.</p><button type="button" class="txe-primary" data-txe-add>Track My First Transaction</button></section>`}
           </main>
-          <button type="button" class="dw-trans-fab" data-edp-trans-add aria-label="Add transaction">+</button>
+          <button type="button" class="txe-fab" data-txe-add aria-label="Add transaction">+</button>
         </section>`;
         markActive(doc, activeButton);
-        const search = screen.querySelector(".dw-trans-search input");
+        const search = screen.querySelector(".txe-search input");
         search?.addEventListener("input", () => {
           const query = search.value.trim().toLowerCase();
           let visible = 0;
-          screen.querySelectorAll(".dw-tx-row").forEach(row => {
-            const matches = !query || row.textContent.toLowerCase().includes(query);
-            row.hidden = !matches;
-            if (matches) visible += 1;
+          screen.querySelectorAll(".txe-row").forEach(row => {
+            const match = !query || row.dataset.search.includes(query);
+            row.hidden = !match;
+            if (match) visible += 1;
           });
-          screen.querySelector(".dw-trans-no-results")?.classList.toggle("show", Boolean(query) && visible === 0);
+          screen.querySelector(".txe-no-results")?.classList.toggle("show", Boolean(query) && visible === 0);
         });
       }
 
-      function showTransactionPopup(doc, type = "expense") {
-        ensureStyles(doc);
-        doc.querySelector(".dw-tx-root")?.remove();
-        const activeType = type === "income" ? "income" : "expense";
-        const root = doc.createElement("div");
-        root.className = "dw-tx-root";
-        root.innerHTML = `<div class="dw-tx-backdrop" data-edp-trans-close></div>
-          <section class="dw-tx-sheet" role="dialog" aria-modal="true" aria-label="Add Transaction" data-budget-items="[]">
-            <header class="dw-tx-sheet-head">
-              <div class="dw-tx-grabber"></div>
-              <div class="dw-tx-head-row"><button class="dw-tx-link" type="button" data-edp-trans-close>Cancel</button><strong>Add Transaction</strong><span class="dw-tx-link dw-tx-done" role="button" tabindex="-1" aria-disabled="true">Done</span></div>
-              <div class="dw-tx-toggle"><button type="button" class="${activeType === "expense" ? "active" : ""}" data-edp-trans-type="expense">− Expense</button><button type="button" class="${activeType === "income" ? "active" : ""}" data-edp-trans-type="income">+ Income</button></div>
-            </header>
-            <main class="dw-tx-body">
-              <section class="dw-tx-panel">
-                <label class="dw-tx-field"><span>Date</span><input type="date" value="${new Date().toISOString().slice(0, 10)}"></label>
-                <label class="dw-tx-field"><span>Amount</span><input type="number" min="0" step="0.01" inputmode="decimal" placeholder="$0.00"></label>
-                <label class="dw-tx-field"><span>${activeType === "income" ? "Source" : "Merchant"}</span><input type="text" maxlength="80" placeholder="Name"></label>
-                <div class="dw-tx-account"><strong>Account</strong><small>No bank connection required. Transactions are entered manually and stored locally in this browser.</small></div>
-              </section>
-              <button type="button" class="dw-tx-budget-row"><span>Budget Item(s)</span><em>Select ›</em></button>
-              <section class="dw-tx-panel"><label class="dw-tx-field"><span>Check #</span><input type="text" inputmode="numeric" placeholder="0000"></label></section>
-              <textarea class="dw-tx-note" placeholder="Add a Note"></textarea>
-            </main>
-          </section>`;
-        doc.body.appendChild(root);
-      }
-
-      function sheetType(sheet) {
-        return sheet.querySelector('[data-edp-trans-type="income"].active') ? "income" : "expense";
-      }
-
-      function sheetAmount(sheet) {
-        const field = [...sheet.querySelectorAll(".dw-tx-field")]
-          .find(item => item.querySelector("span")?.textContent?.trim() === "Amount");
-        const input = field?.querySelector("input");
-        return cents(input?.dataset.rawValue || input?.value);
-      }
-
-      function selectedItems(sheet) {
-        try {
-          const parsed = JSON.parse(sheet.dataset.budgetItems || "[]");
-          if (!Array.isArray(parsed)) return [];
-          const unique = new Map();
-          parsed.forEach(item => {
-            const normalized = {
-              id:String(item.id || item.budgetItemId || ""),
-              name:String(item.name || item.budgetItemName || "Budget item"),
-              amount:cents(item.amount)
-            };
-            if (normalized.id && !unique.has(normalized.id)) unique.set(normalized.id, normalized);
-          });
-          return [...unique.values()];
-        } catch {
-          return [];
-        }
-      }
-
-      function writeSelectedItems(sheet, items) {
-        const unique = new Map();
-        items.forEach(item => {
-          const id = String(item.id || "");
-          if (id && !unique.has(id)) unique.set(id, {
-            id,
-            name:String(item.name || "Budget item"),
-            amount:cents(item.amount)
-          });
-        });
-        const next = [...unique.values()];
-        sheet.dataset.budgetItems = JSON.stringify(next);
-        sheet.dataset.dwAllocationCount = String(next.length);
-      }
-
-      function evenlySplit(total, count) {
+      function evenSplit(total, count) {
         if (!count) return [];
         const totalCents = Math.round(cents(total) * 100);
         const base = Math.floor(totalCents / count);
         let remainder = totalCents - base * count;
         return Array.from({ length:count }, () => {
-          const value = base + (remainder > 0 ? 1 : 0);
+          const part = base + (remainder > 0 ? 1 : 0);
           remainder = Math.max(0, remainder - 1);
-          return value / 100;
+          return part / 100;
         });
       }
 
-      function hideCompetingPanel(node) {
-        if (!node) return;
-        node.hidden = true;
-        node.setAttribute("aria-hidden", "true");
-        node.style.setProperty("display", "none", "important");
-      }
-
-      function normalizeSplitPanels(doc, sheet = doc.querySelector(".dw-tx-sheet")) {
-        if (!sheet) return;
-        const directPanels = [...sheet.querySelectorAll(".dw-direct-split")];
-        directPanels.slice(1).forEach(panel => panel.remove());
-        if (!directPanels.length) return;
-        sheet.querySelectorAll(".dw-tx-selected-items,.dw-tx-selected-fallback,.dw-tx-split-summary")
-          .forEach(hideCompetingPanel);
-      }
-
-      function removeCompetingControls(doc, sheet) {
-        doc.querySelectorAll(".dw-selector,.dw-selector-fallback").forEach(node => node.remove());
-        if (!sheet) return;
-        sheet.querySelectorAll(".dw-tx-selected-items,.dw-tx-selected-fallback,.dw-tx-split-summary")
-          .forEach(hideCompetingPanel);
-      }
-
-      function updateSplitSummary(sheet) {
-        const items = selectedItems(sheet);
-        const total = sheetAmount(sheet);
-        const assigned = cents(items.reduce((sum, item) => sum + cents(item.amount), 0));
-        const difference = Math.round((total - assigned) * 100) / 100;
-        const summary = sheet.querySelector(".dw-direct-split-summary");
-        if (summary) {
-          summary.classList.toggle("over", difference < -0.004);
-          summary.textContent = difference < -0.004
-            ? `${money(Math.abs(difference))} Over Assigned`
-            : `${money(Math.max(0, difference))} Left to Split`;
-        }
-        const ready = total > 0.004 && items.length > 0 && Math.abs(difference) <= 0.004;
-        const done = sheet.querySelector(".dw-tx-done");
-        if (done) {
-          done.classList.toggle("dw-save-ready", ready);
-          done.setAttribute("aria-disabled", ready ? "false" : "true");
-          done.setAttribute("tabindex", ready ? "0" : "-1");
-        }
-      }
-
-      function renderSplitItems(doc, sheet) {
-        removeCompetingControls(doc, sheet);
-        sheet.querySelectorAll(".dw-direct-split").forEach(panel => panel.remove());
-        const items = selectedItems(sheet);
-        writeSelectedItems(sheet, items);
-        const budgetButton = sheet.querySelector(".dw-tx-budget-row");
-        const action = budgetButton?.querySelector("em");
-        if (action) action.textContent = items.length ? "Add another ›" : "Select ›";
-        if (!items.length || !budgetButton) {
-          updateSplitSummary(sheet);
-          return;
-        }
-
-        const panel = doc.createElement("section");
-        panel.className = "dw-direct-split";
-        panel.innerHTML = `${items.map(item => `
-          <label class="dw-direct-split-row" data-dw-direct-split-id="${esc(item.id)}">
-            <button type="button" class="dw-direct-split-remove" data-dw-direct-split-remove="${esc(item.id)}" aria-label="Remove ${esc(item.name)}">−</button>
-            <strong class="dw-direct-split-name">${esc(item.name)}</strong>
-            <input class="dw-direct-split-input" type="number" min="0" step="0.01" inputmode="decimal" value="${item.amount > 0.004 ? item.amount.toFixed(2) : ""}" placeholder="0.00" aria-label="${esc(item.name)} split amount">
-          </label>`).join("")}
-          <div class="dw-direct-split-summary"></div>`;
-        budgetButton.insertAdjacentElement("beforebegin", panel);
-        normalizeSplitPanels(doc, sheet);
-        updateSplitSummary(sheet);
-      }
-
-      function budgetChoices(doc, sheet) {
-        let state = {};
-        try { state = JSON.parse(doc.defaultView.localStorage.getItem(STORE)) || {}; }
-        catch {}
-        const dateField = [...sheet.querySelectorAll(".dw-tx-field")]
-          .find(item => item.querySelector("span")?.textContent?.trim() === "Date")?.querySelector("input");
-        const month = /^\d{4}-\d{2}-\d{2}$/.test(dateField?.value || "")
-          ? dateField.value.slice(0, 7) : monthKey(doc);
-        const budget = state.settings?.monthlyBudgets?.[month] || {};
-        const source = sheetType(sheet) === "income" ? budget.incomeItems : budget.bills;
+      function uniqueItems(items) {
         const unique = new Map();
-        (Array.isArray(source) ? source : []).forEach(item => {
-          const choice = {
-            id:String(item.id || ""),
-            name:String(item.name || (sheetType(sheet) === "income" ? "Income" : "Budget item")),
-            planned:cents(item.amount)
-          };
-          if (choice.id && choice.name && !unique.has(choice.id)) unique.set(choice.id, choice);
+        items.forEach(item => {
+          const id = String(item.id || "");
+          if (!id || unique.has(id)) return;
+          unique.set(id, { id, name:String(item.name || "Budget item"), amount:cents(item.amount), planned:cents(item.planned) });
         });
         return [...unique.values()];
       }
 
-      function openBudgetSelector(doc, sheet) {
-        ensureStyles(doc);
-        removeCompetingControls(doc, sheet);
-        doc.querySelectorAll(".dw-direct-selector").forEach(node => node.remove());
+      function choicesFor(doc, entry) {
+        const state = ensureState(readState(doc.defaultView));
+        const month = /^\d{4}-\d{2}-\d{2}$/.test(entry.date) ? entry.date.slice(0, 7) : currentMonth();
+        const budget = budgetFor(state, month, false);
+        const source = entry.type === "income" ? budget?.incomeItems : budget?.bills;
+        return uniqueItems((Array.isArray(source) ? source : []).map(item => ({
+          id:item.id,
+          name:item.name || (entry.type === "income" ? "Income" : "Budget item"),
+          planned:item.amount
+        })));
+      }
 
-        const choices = budgetChoices(doc, sheet);
-        const existing = new Map(selectedItems(sheet).map(item => [item.id, item]));
-        const selected = new Set(existing.keys());
-        const originalIds = [...selected].sort().join("|");
-        const overlay = doc.createElement("section");
-        overlay.className = "dw-direct-selector";
-        overlay.setAttribute("role", "dialog");
-        overlay.setAttribute("aria-modal", "true");
-        overlay.setAttribute("aria-label", "Select budget items");
+      function entryTotal(entry) {
+        return cents(entry.amount);
+      }
+
+      function assignedTotal(entry) {
+        return cents(entry.items.reduce((sum, item) => sum + cents(item.amount), 0));
+      }
+
+      function entryReady(entry) {
+        return entryTotal(entry) > .004 && entry.items.length > 0 && Math.abs(entryTotal(entry) - assignedTotal(entry)) <= .004;
+      }
+
+      function renderAllocations(root, entry) {
+        const body = root.querySelector(".txe-body");
+        const budgetButton = root.querySelector(".txe-budget-button");
+        body.querySelector(".txe-allocations")?.remove();
+        budgetButton.querySelector("span:last-child").textContent = entry.items.length ? "Add another ›" : "Select ›";
+        if (entry.items.length) {
+          const panel = root.ownerDocument.createElement("section");
+          panel.className = "txe-allocations";
+          panel.innerHTML = `${entry.items.map(item => `
+            <label class="txe-allocation" data-txe-item="${esc(item.id)}">
+              <button type="button" class="txe-remove" data-txe-remove="${esc(item.id)}" aria-label="Remove ${esc(item.name)}">−</button>
+              <strong>${esc(item.name)}</strong>
+              <input type="number" min="0" step="0.01" inputmode="decimal" value="${item.amount > .004 ? item.amount.toFixed(2) : ""}" placeholder="0.00" aria-label="${esc(item.name)} split amount">
+            </label>`).join("")}
+            <div class="txe-summary"></div>`;
+          budgetButton.insertAdjacentElement("beforebegin", panel);
+        }
+        updateEntryState(root, entry);
+      }
+
+      function updateEntryState(root, entry) {
+        const difference = Math.round((entryTotal(entry) - assignedTotal(entry)) * 100) / 100;
+        const summary = root.querySelector(".txe-summary");
+        if (summary) {
+          summary.classList.toggle("over", difference < -.004);
+          summary.textContent = difference < -.004
+            ? `${money.format(Math.abs(difference))} Over Assigned`
+            : `${money.format(Math.max(0, difference))} Left to Split`;
+        }
+        root.querySelector("[data-txe-save]").disabled = !entryReady(entry);
+      }
+
+      function openSelector(doc, root, entry) {
+        root.querySelector(".txe-selector")?.remove();
+        const choices = choicesFor(doc, entry);
+        const selected = new Set(entry.items.map(item => item.id));
+        const original = [...selected].sort().join("|");
+        const selector = doc.createElement("section");
+        selector.className = "txe-selector";
+        selector.setAttribute("role", "dialog");
+        selector.setAttribute("aria-modal", "true");
+        selector.setAttribute("aria-label", "Select budget items");
 
         const paint = () => {
-          overlay.innerHTML = `
-            <header class="dw-direct-selector-head">
-              <div class="dw-direct-selector-top">
-                <button type="button" data-dw-direct-selector-cancel>Cancel</button>
-                <strong>Select Budget Items</strong>
-                <button type="button" data-dw-direct-selector-done>Done</button>
-              </div>
-              <label class="dw-direct-selector-search"><span>⌕</span><input type="search" placeholder="Search budget items" aria-label="Search budget items"></label>
-            </header>
-            <main class="dw-direct-selector-body">
-              <p class="dw-direct-selector-note">Choose one item to apply the full amount, or choose multiple items to split the transaction.</p>
-              <div class="dw-direct-selector-list">
-                ${choices.length ? choices.map(item => `
-                  <button type="button" class="dw-direct-selector-item${selected.has(item.id) ? " selected" : ""}" data-dw-direct-selector-item="${esc(item.id)}">
-                    <span class="dw-direct-selector-check">✓</span>
-                    <strong>${esc(item.name)}</strong>
-                    <small>${money(item.planned)}</small>
-                  </button>`).join("") : '<div class="dw-direct-selector-empty">No budget items are available for this month.</div>'}
-              </div>
-            </main>`;
-
-          overlay.querySelector("input[type=search]")?.addEventListener("input", event => {
+          selector.innerHTML = `<header class="txe-selector-head">
+            <div class="txe-selector-top">
+              <button type="button" data-txe-selector-cancel>Cancel</button>
+              <strong>Select Budget Items</strong>
+              <button type="button" data-txe-selector-done>Done</button>
+            </div>
+            <label class="txe-selector-search"><span>⌕</span><input type="search" placeholder="Search budget items" aria-label="Search budget items"></label>
+          </header>
+          <main class="txe-selector-body">
+            <p class="txe-selector-note">Choose one item to apply the full amount, or choose multiple items to split the transaction.</p>
+            <div class="txe-selector-list">
+              ${choices.length ? choices.map(item => `
+                <button type="button" class="txe-choice${selected.has(item.id) ? " selected" : ""}" data-txe-choice="${esc(item.id)}">
+                  <span class="txe-check">✓</span>
+                  <strong>${esc(item.name)}</strong>
+                  <small>${money.format(item.planned)}</small>
+                </button>`).join("") : '<div class="txe-selector-empty">No budget items are available for this month.</div>'}
+            </div>
+          </main>`;
+          selector.querySelector("input[type=search]")?.addEventListener("input", event => {
             const query = event.target.value.trim().toLowerCase();
-            overlay.querySelectorAll("[data-dw-direct-selector-item]").forEach(row => {
+            selector.querySelectorAll("[data-txe-choice]").forEach(row => {
               row.hidden = Boolean(query) && !row.textContent.toLowerCase().includes(query);
             });
           });
         };
 
-        overlay.addEventListener("click", event => {
-          const itemButton = event.target.closest("[data-dw-direct-selector-item]");
-          if (itemButton) {
-            const id = itemButton.dataset.dwDirectSelectorItem;
+        selector.addEventListener("click", event => {
+          const choice = event.target.closest("[data-txe-choice]");
+          if (choice) {
+            const id = choice.dataset.txeChoice;
             selected.has(id) ? selected.delete(id) : selected.add(id);
             paint();
             return;
           }
-          if (event.target.closest("[data-dw-direct-selector-cancel]")) {
-            overlay.remove();
+          if (event.target.closest("[data-txe-selector-cancel]")) {
+            selector.remove();
             return;
           }
-          if (event.target.closest("[data-dw-direct-selector-done]")) {
+          if (event.target.closest("[data-txe-selector-done]")) {
+            const existing = new Map(entry.items.map(item => [item.id, item]));
             const next = choices.filter(item => selected.has(item.id)).map(item => ({
               id:item.id,
               name:item.name,
               amount:existing.get(item.id)?.amount || 0
             }));
-            const total = sheetAmount(sheet);
-            const changed = [...selected].sort().join("|") !== originalIds;
+            const changed = [...selected].sort().join("|") !== original;
             if (next.length === 1) {
-              next[0].amount = total;
+              next[0].amount = entryTotal(entry);
+              entry.autoSplit = true;
             } else if (next.length > 1 && changed) {
-              const amounts = evenlySplit(total, next.length);
+              const amounts = evenSplit(entryTotal(entry), next.length);
               next.forEach((item, index) => { item.amount = amounts[index]; });
+              entry.autoSplit = true;
             }
-            writeSelectedItems(sheet, next);
-            overlay.remove();
-            renderSplitItems(doc, sheet);
-            sheet.dispatchEvent(new Event("change", { bubbles:true }));
+            entry.items = uniqueItems(next);
+            selector.remove();
+            renderAllocations(root, entry);
           }
         });
 
         paint();
-        doc.body.appendChild(overlay);
+        root.appendChild(selector);
       }
 
-      function installSplitController(doc) {
+      function saveEntry(doc, root, entry, activeButton) {
+        if (!entryReady(entry)) return;
         const win = doc.defaultView;
-        if (win.__dwDirectTransactionSplitV73) return;
-        win.__dwDirectTransactionSplitV73 = true;
+        const state = ensureState(readState(win));
+        const month = entry.date.slice(0, 7);
+        const budget = budgetFor(state, month, true);
+        const tracking = state.settings.budgetTracking[month] && typeof state.settings.budgetTracking[month] === "object"
+          ? state.settings.budgetTracking[month] : (state.settings.budgetTracking[month] = {});
+        const items = uniqueItems(entry.items);
+        const id = `tx-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`;
+        budget.transactions.push({
+          id,
+          type:entry.type,
+          date:entry.date,
+          amount:entryTotal(entry),
+          merchant:entry.type === "expense" ? (entry.party || "Expense") : "",
+          source:entry.type === "income" ? (entry.party || "Income") : "",
+          budgetItemId:items.length === 1 ? items[0].id : "",
+          budgetItemName:items.length === 1 ? items[0].name : items.map(item => item.name).join(", "),
+          allocations:items.map(item => ({ budgetItemId:item.id, budgetItemName:item.name, amount:cents(item.amount) })),
+          checkNumber:entry.checkNumber,
+          note:entry.note,
+          createdAt:new Date().toISOString()
+        });
+        items.forEach(item => {
+          const key = `${entry.type === "income" ? "income" : "expense"}:${item.id}`;
+          tracking[key] = cents(number(tracking[key]) + item.amount);
+        });
+        budget.updatedAt = new Date().toISOString();
+        state.ui.budgetMonth = month;
+        writeState(win, state);
+        root.remove();
+        renderTransactions(doc, activeButton, month);
+      }
 
-        let cleanupQueued = false;
-        const queueCleanup = () => {
-          if (cleanupQueued) return;
-          cleanupQueued = true;
-          win.requestAnimationFrame(() => {
-            cleanupQueued = false;
-            normalizeSplitPanels(doc);
-          });
+      function openEntry(doc, activeButton, initialType = "expense") {
+        injectStyles(doc);
+        doc.querySelector(".txe-root")?.remove();
+        const entry = {
+          type:initialType === "income" ? "income" : "expense",
+          date:todayKey(),
+          amount:0,
+          party:"",
+          checkNumber:"",
+          note:"",
+          items:[],
+          autoSplit:true
         };
-        new win.MutationObserver(queueCleanup).observe(doc.body, { childList:true, subtree:true });
+        const root = doc.createElement("section");
+        root.className = "txe-root";
+        root.setAttribute("role", "dialog");
+        root.setAttribute("aria-modal", "true");
+        root.setAttribute("aria-label", "Add Transaction");
+        root.innerHTML = `<header class="txe-head">
+          <div class="txe-head-row">
+            <button type="button" class="txe-link" data-txe-cancel>Cancel</button>
+            <strong>Add Transaction</strong>
+            <button type="button" class="txe-link" data-txe-save disabled>Done</button>
+          </div>
+          <div class="txe-toggle">
+            <button type="button" class="${entry.type === "expense" ? "active" : ""}" data-txe-type="expense">− Expense</button>
+            <button type="button" class="${entry.type === "income" ? "active" : ""}" data-txe-type="income">+ Income</button>
+          </div>
+        </header>
+        <main class="txe-body">
+          <section class="txe-panel">
+            <label class="txe-field"><span>Date</span><input data-txe-date type="date" value="${entry.date}"></label>
+            <label class="txe-field"><span>Amount</span><input data-txe-amount type="number" min="0" step="0.01" inputmode="decimal" placeholder="0.00"></label>
+            <label class="txe-field"><span data-txe-party-label>${entry.type === "income" ? "Source" : "Merchant"}</span><input data-txe-party type="text" maxlength="80" placeholder="Name"></label>
+            <div class="txe-account"><strong>Account</strong><small>No bank connection required. Transactions are entered manually and stored locally in this browser.</small></div>
+          </section>
+          <button type="button" class="txe-budget-button"><span>Budget Item(s)</span><span>Select ›</span></button>
+          <section class="txe-panel"><label class="txe-field"><span>Check #</span><input data-txe-check type="text" inputmode="numeric" placeholder="0000"></label></section>
+          <textarea class="txe-note" data-txe-note placeholder="Add a Note"></textarea>
+        </main>`;
 
-        win.addEventListener("click", event => {
-          const budgetButton = event.target.closest?.(".dw-tx-budget-row");
-          if (budgetButton) {
-            const sheet = budgetButton.closest(".dw-tx-sheet");
-            if (!sheet) return;
-            event.preventDefault();
-            event.stopPropagation();
-            event.stopImmediatePropagation();
-            openBudgetSelector(doc, sheet);
-            return;
-          }
-
-          const removeButton = event.target.closest?.("[data-dw-direct-split-remove]");
-          if (removeButton) {
-            const sheet = removeButton.closest(".dw-tx-sheet");
-            if (!sheet) return;
-            event.preventDefault();
-            event.stopPropagation();
-            event.stopImmediatePropagation();
-            const id = removeButton.dataset.dwDirectSplitRemove;
-            const next = selectedItems(sheet).filter(item => item.id !== id);
-            if (next.length === 1) next[0].amount = sheetAmount(sheet);
-            writeSelectedItems(sheet, next);
-            renderSplitItems(doc, sheet);
-            sheet.dispatchEvent(new Event("change", { bubbles:true }));
-          }
-        }, true);
-
-        win.addEventListener("input", event => {
-          const sheet = event.target.closest?.(".dw-tx-sheet");
-          if (!sheet) return;
-
-          const splitInput = event.target.closest(".dw-direct-split-input");
-          if (splitInput) {
-            const row = splitInput.closest("[data-dw-direct-split-id]");
-            const next = selectedItems(sheet).map(item => item.id === row?.dataset.dwDirectSplitId
-              ? { ...item, amount:cents(splitInput.value) } : item);
-            writeSelectedItems(sheet, next);
-            updateSplitSummary(sheet);
-            return;
-          }
-
-          const amountField = event.target.closest(".dw-tx-field");
-          if (amountField?.querySelector("span")?.textContent?.trim() === "Amount") {
-            const next = selectedItems(sheet);
-            if (next.length === 1) {
-              next[0].amount = sheetAmount(sheet);
-              writeSelectedItems(sheet, next);
-              renderSplitItems(doc, sheet);
-            } else {
-              updateSplitSummary(sheet);
+        root.addEventListener("input", event => {
+          if (event.target.matches("[data-txe-date]")) {
+            const nextDate = event.target.value;
+            if (/^\d{4}-\d{2}-\d{2}$/.test(nextDate)) {
+              const changedMonth = nextDate.slice(0, 7) !== entry.date.slice(0, 7);
+              entry.date = nextDate;
+              if (changedMonth) {
+                entry.items = [];
+                renderAllocations(root, entry);
+              }
             }
+          } else if (event.target.matches("[data-txe-amount]")) {
+            entry.amount = cents(event.target.value);
+            if (entry.items.length === 1) {
+              entry.items[0].amount = entryTotal(entry);
+            } else if (entry.items.length > 1 && entry.autoSplit) {
+              const amounts = evenSplit(entryTotal(entry), entry.items.length);
+              entry.items.forEach((item, index) => { item.amount = amounts[index]; });
+            }
+            renderAllocations(root, entry);
+          } else if (event.target.matches("[data-txe-party]")) {
+            entry.party = event.target.value.trim();
+          } else if (event.target.matches("[data-txe-check]")) {
+            entry.checkNumber = event.target.value.trim();
+          } else if (event.target.matches("[data-txe-note]")) {
+            entry.note = event.target.value;
+          } else if (event.target.closest(".txe-allocation")) {
+            const row = event.target.closest("[data-txe-item]");
+            entry.items = entry.items.map(item => item.id === row?.dataset.txeItem
+              ? { ...item, amount:cents(event.target.value) } : item);
+            entry.autoSplit = false;
+            updateEntryState(root, entry);
           }
-        }, true);
+        });
+
+        root.addEventListener("click", event => {
+          if (event.target.closest("[data-txe-cancel]")) {
+            root.remove();
+            return;
+          }
+          const typeButton = event.target.closest("[data-txe-type]");
+          if (typeButton) {
+            const nextType = typeButton.dataset.txeType === "income" ? "income" : "expense";
+            if (entry.type !== nextType) {
+              entry.type = nextType;
+              entry.items = [];
+              entry.autoSplit = true;
+              root.querySelectorAll("[data-txe-type]").forEach(button => button.classList.toggle("active", button === typeButton));
+              root.querySelector("[data-txe-party-label]").textContent = nextType === "income" ? "Source" : "Merchant";
+              renderAllocations(root, entry);
+            }
+            return;
+          }
+          if (event.target.closest(".txe-budget-button")) {
+            openSelector(doc, root, entry);
+            return;
+          }
+          const remove = event.target.closest("[data-txe-remove]");
+          if (remove) {
+            entry.items = entry.items.filter(item => item.id !== remove.dataset.txeRemove);
+            if (entry.items.length === 1) entry.items[0].amount = entryTotal(entry);
+            entry.autoSplit = true;
+            renderAllocations(root, entry);
+            return;
+          }
+          if (event.target.closest("[data-txe-save]") && entryReady(entry)) {
+            saveEntry(doc, root, entry, activeButton);
+          }
+        });
+
+        doc.body.appendChild(root);
+        updateEntryState(root, entry);
       }
 
       function install(doc) {
         const win = doc.defaultView;
-        if (!doc.body || win.__dwTransactionRouteV73) return;
-        win.__dwTransactionRouteV73 = true;
-        installSplitController(doc);
+        if (!doc.body || win.__transactionEntryV74) return;
+        win.__transactionEntryV74 = true;
+        injectStyles(doc);
 
         doc.addEventListener("click", event => {
-          const navButton = transactionNavButton(event.target);
+          const navButton = transactionButton(event.target);
           if (navButton) {
             event.preventDefault();
-            event.stopImmediatePropagation();
-            try {
-              win.localStorage.setItem(PAGE_KEY, "transactions");
-              win.sessionStorage.setItem(PAGE_KEY, "transactions");
-            } catch {}
+            event.stopPropagation();
             renderTransactions(doc, navButton);
             return;
           }
-
-          const add = event.target.closest?.("[data-edp-trans-add]");
+          const add = event.target.closest?.("[data-txe-add]");
           if (add) {
             event.preventDefault();
-            event.stopPropagation();
-            showTransactionPopup(doc, "expense");
-            return;
-          }
-
-          const type = event.target.closest?.("[data-edp-trans-type]");
-          if (type) {
-            event.preventDefault();
-            showTransactionPopup(doc, type.dataset.edpTransType);
-            return;
-          }
-
-          if (event.target.closest?.("[data-edp-trans-close]")) {
-            event.preventDefault();
-            doc.querySelector(".dw-tx-root")?.remove();
-            return;
-          }
-
-          const otherNav = event.target.closest?.("#dw-primary-nav button,#tabbar button,[data-dw-more-page]");
-          if (otherNav) {
-            delete doc.body.dataset.debtwizardPage;
-            const screen = doc.getElementById("screen");
-            if (screen) screen.dataset.transactionsShell = "";
+            openEntry(doc, transactionButton(doc.querySelector("#dw-primary-nav .active,#tabbar .active")) || doc.querySelector(".dw-nav-transaction,[data-edp-trans-nav]"));
           }
         }, true);
+
+        [100, 400, 900].forEach(delay => win.setTimeout(() => {
+          let activePage = "";
+          try { activePage = win.sessionStorage.getItem(PAGE_KEY) || win.localStorage.getItem(PAGE_KEY) || ""; } catch {}
+          if (activePage !== "transactions" || doc.querySelector(".txe-page")) return;
+          const button = [...doc.querySelectorAll("#dw-primary-nav button,#tabbar button")].find(item => transactionButton(item));
+          if (button) renderTransactions(doc, button);
+        }, delay));
       }
 
       host.addEventListener("load", () => {
         try { install(host.contentDocument); }
-        catch (error) { console.error("Transactions navigation could not be installed.", error); }
+        catch (error) { console.error("Transaction entry could not be installed.", error); }
       });
     })();
   </script>
