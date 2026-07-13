@@ -4,7 +4,12 @@
   const screen = document.getElementById("screen");
   if (!screen) return;
 
-  const FAQ_BUILD = "4";
+  const FAQ_BUILD = "5";
+  const STORAGE_KEY = "debt-calculator-v2";
+  const MODE_KEY = "debtwizard-budget-value-mode";
+  const money = new Intl.NumberFormat("en-US", { style:"currency", currency:"USD" });
+  const viewModes = new Set(["planned", "spent", "remaining"]);
+
   const faqItems = [
     {
       question: "What is the debt snowball?",
@@ -67,21 +72,24 @@
     }
   ];
 
-  function installSingleSplitOwnerStyles() {
-    const styleId = `dw-single-transaction-split-v${FAQ_BUILD}`;
+  const number = value => {
+    const parsed = Number.parseFloat(String(value ?? "").replace(/[^0-9.-]/g, ""));
+    return Number.isFinite(parsed) ? parsed : 0;
+  };
+  const cents = value => Math.round((number(value) + Number.EPSILON) * 100) / 100;
+
+  function installStyles() {
+    const styleId = `dw-budget-value-view-v${FAQ_BUILD}`;
     if (document.getElementById(styleId)) return;
-    document.querySelectorAll('[id^="dw-single-transaction-split-v"]').forEach(node => node.remove());
+    document.querySelectorAll('[id^="dw-budget-value-view-v"]').forEach(node => node.remove());
     const style = document.createElement("style");
     style.id = styleId;
     style.textContent = `
-      .dw-tx-sheet:has(.dw-direct-split) .dw-tx-selected-items,
-      .dw-tx-sheet:has(.dw-direct-split) .dw-tx-selected-fallback,
-      .dw-tx-sheet:has(.dw-direct-split) .dw-tx-split-summary {
-        display: none !important;
-      }
-      .dw-tx-sheet .dw-direct-split ~ .dw-direct-split {
-        display: none !important;
-      }
+      .dw-budget-value-toggle{display:grid;grid-template-columns:repeat(3,1fr);gap:4px;margin:12px 0 16px;padding:4px;border-radius:13px;background:#e7f0f2}
+      .dw-budget-value-toggle button{min-height:40px;border:0;border-radius:10px;background:transparent;color:#68777d;font:inherit;font-size:.88rem;font-weight:900}
+      .dw-budget-value-toggle button.active{background:#fff;color:#087f9a;box-shadow:0 2px 8px rgba(15,81,107,.12)}
+      .edp-amount .dw-budget-mode-value{display:block;color:#263137;font-size:1.05rem;font-weight:900}
+      .edp-amount.negative .dw-budget-mode-value{color:#b8443d}
     `;
     document.head.appendChild(style);
   }
@@ -122,6 +130,164 @@
     wrap.appendChild(section);
   }
 
+  function budgetSection(title) {
+    return [...document.querySelectorAll("#budget-form .section")]
+      .find(section => (section.querySelector(".section-title")?.textContent || "").trim().startsWith(title));
+  }
+
+  function selectedBudgetMonth() {
+    const formMonth = document.getElementById("budget-form")?.dataset.month;
+    if (/^\d{4}-\d{2}$/.test(formMonth || "")) return formMonth;
+    const date = new Date();
+    return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}`;
+  }
+
+  function readBudgetData() {
+    let state = {};
+    try { state = JSON.parse(localStorage.getItem(STORAGE_KEY)) || {}; }
+    catch {}
+    const month = selectedBudgetMonth();
+    const settings = state.settings && typeof state.settings === "object" ? state.settings : {};
+    const budget = settings.monthlyBudgets?.[month] || {};
+    const incomeItems = Array.isArray(budget.incomeItems) ? budget.incomeItems : [];
+    const expenseItems = Array.isArray(budget.bills) ? budget.bills : [];
+    const planned = new Map();
+    incomeItems.forEach(item => planned.set(`income:${String(item.id || "")}`, cents(item.amount)));
+    expenseItems.forEach(item => planned.set(`expense:${String(item.id || "")}`, cents(item.amount)));
+
+    const actual = new Map();
+    const transactions = Array.isArray(budget.transactions) ? budget.transactions : [];
+    transactions.filter(transaction => !transaction.deleted && !transaction.deletedAt && !transaction.isDeleted).forEach(transaction => {
+      const kind = transaction.type === "income" ? "income" : "expense";
+      const allocations = Array.isArray(transaction.allocations) && transaction.allocations.length
+        ? transaction.allocations
+        : transaction.budgetItemId
+          ? [{ budgetItemId:transaction.budgetItemId, amount:transaction.amount }]
+          : [];
+      allocations.forEach(allocation => {
+        const id = String(allocation.budgetItemId || allocation.id || "");
+        if (!id) return;
+        const key = `${kind}:${id}`;
+        actual.set(key, cents((actual.get(key) || 0) + number(allocation.amount)));
+      });
+    });
+
+    const tracking = settings.budgetTracking?.[month];
+    if (tracking && typeof tracking === "object") {
+      Object.entries(tracking).forEach(([key, value]) => {
+        if (!actual.has(key)) actual.set(key, cents(value));
+      });
+    }
+    return { planned, actual };
+  }
+
+  function currentMode() {
+    const stored = String(localStorage.getItem(MODE_KEY) || "planned").toLowerCase();
+    return viewModes.has(stored) ? stored : "planned";
+  }
+
+  function setMode(mode) {
+    if (!viewModes.has(mode)) return;
+    localStorage.setItem(MODE_KEY, mode);
+  }
+
+  function recognizedMode(button) {
+    const explicit = String(button?.dataset.dwBudgetMode || "").toLowerCase();
+    if (viewModes.has(explicit)) return explicit;
+    const text = String(button?.textContent || "").replace(/\s+/g, " ").trim().toLowerCase();
+    return viewModes.has(text) ? text : "";
+  }
+
+  function ensureBudgetToggle() {
+    const form = document.getElementById("budget-form");
+    if (!form) return null;
+    const recognized = [...form.querySelectorAll("button")].filter(button => recognizedMode(button));
+    if (recognized.length >= 3) {
+      recognized.forEach(button => { button.dataset.dwBudgetMode = recognizedMode(button); });
+      return recognized[0].parentElement;
+    }
+
+    const assigned = budgetSection("Assigned categories");
+    if (!assigned) return null;
+    let toggle = assigned.querySelector(".dw-budget-value-toggle");
+    if (!toggle) {
+      toggle = document.createElement("div");
+      toggle.className = "dw-budget-value-toggle";
+      toggle.setAttribute("role", "group");
+      toggle.setAttribute("aria-label", "Budget value view");
+      toggle.innerHTML = `
+        <button type="button" data-dw-budget-mode="planned">Planned</button>
+        <button type="button" data-dw-budget-mode="spent">Spent</button>
+        <button type="button" data-dw-budget-mode="remaining">Remaining</button>`;
+      assigned.querySelector(".section-head")?.insertAdjacentElement("afterend", toggle);
+    }
+    return toggle;
+  }
+
+  function rowValue(row, mode, data) {
+    const kind = row.dataset.kind === "income" ? "income" : "expense";
+    const id = String(row.dataset.id || "");
+    const key = `${kind}:${id}`;
+    let planned = data.planned.get(key);
+    if (!Number.isFinite(planned)) {
+      planned = number(row.dataset.dwBudgetPlanned || row.querySelector(".edp-amount")?.textContent);
+    }
+    const spent = data.actual.get(key) || 0;
+    row.dataset.dwBudgetPlanned = String(cents(planned));
+    row.dataset.dwBudgetSpent = String(cents(spent));
+    row.dataset.dwBudgetRemaining = String(cents(planned - spent));
+    return mode === "spent" ? cents(spent) : mode === "remaining" ? cents(planned - spent) : cents(planned);
+  }
+
+  function applyBudgetValues() {
+    const form = document.getElementById("budget-form");
+    if (!form) return;
+    const toggle = ensureBudgetToggle();
+    if (!toggle) return;
+    const mode = currentMode();
+    [...form.querySelectorAll("button")].forEach(button => {
+      const buttonMode = recognizedMode(button);
+      if (!buttonMode) return;
+      const active = buttonMode === mode;
+      button.classList.toggle("active", active);
+      button.setAttribute("aria-pressed", String(active));
+    });
+
+    const data = readBudgetData();
+    form.querySelectorAll(".edp-item-row[data-id][data-kind]").forEach(row => {
+      const value = rowValue(row, mode, data);
+      const amount = row.querySelector(".edp-amount");
+      if (!amount) return;
+      const next = money.format(value);
+      let valueNode = amount.querySelector(".dw-budget-mode-value");
+      if (!valueNode) {
+        valueNode = document.createElement("span");
+        valueNode.className = "dw-budget-mode-value";
+        amount.prepend(valueNode);
+        [...amount.childNodes].filter(node => node.nodeType === Node.TEXT_NODE).forEach(node => node.remove());
+      }
+      if (valueNode.textContent !== next) valueNode.textContent = next;
+      amount.classList.toggle("negative", value < -0.004);
+    });
+
+    document.querySelectorAll("#budget-form .edp-card").forEach(card => {
+      const rows = [...card.querySelectorAll(".edp-item-row[data-id][data-kind]")];
+      if (!rows.length) return;
+      const total = rows.reduce((sum, row) => sum + rowValue(row, mode, data), 0);
+      const totalNode = card.querySelector(".edp-cat-total");
+      if (totalNode && totalNode.textContent !== money.format(total)) totalNode.textContent = money.format(total);
+    });
+
+    [["Income", "income"], ["Assigned categories", "expense"]].forEach(([title, kind]) => {
+      const section = budgetSection(title);
+      if (!section) return;
+      const rows = [...section.querySelectorAll(`.edp-item-row[data-kind="${kind}"]`)];
+      const total = rows.reduce((sum, row) => sum + rowValue(row, mode, data), 0);
+      const totalNode = section.querySelector(".budget-section-total");
+      if (totalNode && totalNode.textContent !== money.format(total)) totalNode.textContent = money.format(total);
+    });
+  }
+
   let queued = false;
   function queueEnsure() {
     if (queued) return;
@@ -129,10 +295,21 @@
     requestAnimationFrame(() => {
       queued = false;
       ensureFaq();
+      applyBudgetValues();
     });
   }
 
   document.addEventListener("click", event => {
+    const modeButton = event.target.closest("button");
+    const mode = recognizedMode(modeButton);
+    if (mode && document.getElementById("budget-form")?.contains(modeButton)) {
+      event.preventDefault();
+      event.stopPropagation();
+      setMode(mode);
+      applyBudgetValues();
+      return;
+    }
+
     const button = event.target.closest("[data-faq-toggle]");
     if (!button) return;
     event.preventDefault();
@@ -147,6 +324,6 @@
 
   new MutationObserver(queueEnsure).observe(document.body, { childList:true, subtree:true });
 
-  installSingleSplitOwnerStyles();
+  installStyles();
   queueEnsure();
 })();
