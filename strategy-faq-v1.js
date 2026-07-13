@@ -4,7 +4,7 @@
   const screen = document.getElementById("screen");
   if (!screen) return;
 
-  const SELECTOR_FIX_BUILD = "2";
+  const SELECTOR_FIX_BUILD = "3";
   const STORAGE_KEY = "debt-calculator-v2";
   const txMoney = new Intl.NumberFormat("en-US", { style:"currency", currency:"USD" });
 
@@ -82,7 +82,7 @@
     const style = document.createElement("style");
     style.id = `dw-transaction-selector-fix-v${SELECTOR_FIX_BUILD}`;
     style.textContent = `
-      .dw-selector-fallback{position:fixed;z-index:900;inset:0;background:#f4f6f7;display:flex;flex-direction:column;color:#173f50}
+      .dw-selector-fallback{position:fixed;z-index:1800;inset:0;background:#f4f6f7;display:flex;flex-direction:column;color:#173f50}
       .dw-selector-fallback-head{display:grid;grid-template-columns:78px 1fr 78px;align-items:center;padding:calc(14px + env(safe-area-inset-top,0px)) 18px 14px;background:linear-gradient(135deg,#0791aa,#31c5d9);color:#fff}
       .dw-selector-fallback-head strong{text-align:center;font-size:1.08rem;font-weight:900}
       .dw-selector-fallback-head button{border:0;background:transparent;color:#fff;font:inherit;font-weight:850;padding:10px 0}
