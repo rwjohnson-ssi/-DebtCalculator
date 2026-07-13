@@ -14,7 +14,7 @@
   </style>
 </head>
 <body>
-  <iframe id="app-host" title="DebtWizard" src="mobile.html?v=74" allow="clipboard-read; clipboard-write"></iframe>
+  <iframe id="app-host" title="DebtWizard" src="mobile.html?v=75" allow="clipboard-read; clipboard-write"></iframe>
   <script>
     (() => {
       "use strict";
@@ -22,7 +22,7 @@
       const host = document.getElementById("app-host");
       const STORAGE_KEY = "debt-calculator-v2";
       const PAGE_KEY = "debtwizard-active-page";
-      const BUILD = "74";
+      const BUILD = "75";
       const money = new Intl.NumberFormat("en-US", { style:"currency", currency:"USD" });
       const validMonth = value => /^\d{4}-(0[1-9]|1[0-2])$/.test(String(value || ""));
       const number = value => {
@@ -79,7 +79,7 @@
         if ((!budget || typeof budget !== "object") && create) {
           budget = {
             incomeSources:{}, budgetCategories:{}, incomeItems:[], bills:[],
-            transactions:[], schedule:{ buffer:0, income:{}, budget:{} },
+            transactions:[], deletedTransactions:[], schedule:{ buffer:0, income:{}, budget:{} },
             createdAt:new Date().toISOString(), updatedAt:new Date().toISOString()
           };
           settings.monthlyBudgets[month] = budget;
@@ -88,6 +88,7 @@
         budget.incomeItems = Array.isArray(budget.incomeItems) ? budget.incomeItems : [];
         budget.bills = Array.isArray(budget.bills) ? budget.bills : [];
         budget.transactions = Array.isArray(budget.transactions) ? budget.transactions : [];
+        budget.deletedTransactions = Array.isArray(budget.deletedTransactions) ? budget.deletedTransactions : [];
         return budget;
       }
 
@@ -124,6 +125,8 @@
           .txe-search input{width:100%;border:0;outline:0;background:transparent;color:#24343b;font-size:1rem}
           .txe-wrap{padding:24px}
           .txe-card{overflow:hidden;margin-bottom:20px;padding:18px;border:1px solid #dce8eb;border-radius:20px;background:#fff;box-shadow:0 10px 26px rgba(15,81,107,.07)}
+          .txe-deleted-link{width:100%;display:grid;grid-template-columns:34px minmax(0,1fr) auto;align-items:center;gap:12px;margin:0 0 20px;padding:18px;border:1px solid #dce8eb;border-radius:20px;background:#fff;color:#20323a;text-align:left;font:inherit;font-weight:900;box-shadow:0 10px 26px rgba(15,81,107,.07)}
+          .txe-deleted-link span:first-child,.txe-deleted-link span:last-child{color:#0f7893;font-size:1.38rem}.txe-deleted-count{color:#68777d;font-size:.82rem;font-weight:850}
           .txe-month{margin-bottom:8px;color:#506169;font-weight:900}
           .txe-row{display:grid;grid-template-columns:50px minmax(0,1fr) auto;align-items:center;gap:13px;padding:14px 0;border-top:1px solid #edf1f2}
           .txe-row:first-of-type{border-top:0}
@@ -131,13 +134,19 @@
           .txe-name{display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:#202b31;font-weight:900}
           .txe-category{display:block;margin-top:4px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:#0f7893;font-size:.79rem;font-weight:800}
           .txe-amount{color:#202b31;font-weight:950;white-space:nowrap}
-          .txe-empty{padding:52px 4px 68px}
+          .txe-empty{padding:32px 4px 68px}
           .txe-empty h2{margin:0 0 14px;font-size:2rem;line-height:1.08}
           .txe-empty p{margin:0 0 24px;color:#58676d;line-height:1.45}
           .txe-primary{width:100%;min-height:56px;border:0;border-radius:14px;background:linear-gradient(135deg,#0f7893,#27c7d8);color:#fff;font:inherit;font-weight:950}
           .txe-fab{position:fixed;right:24px;bottom:calc(96px + env(safe-area-inset-bottom,0px));z-index:135;width:64px;height:64px;border:0;border-radius:50%;background:linear-gradient(135deg,#0f7893,#27c7d8);color:#fff;font-size:2.7rem;line-height:1;box-shadow:0 12px 30px rgba(0,35,62,.26)}
           .txe-no-results{display:none;padding:20px;color:#68777d;text-align:center;font-weight:850}
           .txe-no-results.show{display:block}
+          .txe-deleted-page{min-height:100vh;background:#f4f7f8;color:#17313d}
+          .txe-deleted-head{position:sticky;top:0;z-index:2;display:grid;grid-template-columns:80px minmax(0,1fr) 80px;align-items:center;padding:calc(14px + env(safe-area-inset-top,0px)) 18px 14px;background:linear-gradient(135deg,#cceff4,#eafcfe);border-bottom:1px solid #b9e3ea;color:#0f516b}
+          .txe-deleted-back{border:0;background:transparent;color:#0f516b;padding:10px 0;text-align:left;font:inherit;font-weight:900}.txe-deleted-title{text-align:center;font-size:1.16rem;font-weight:950}
+          .txe-deleted-body{padding:24px 18px calc(40px + env(safe-area-inset-bottom,0px))}.txe-deleted-card{overflow:hidden;padding:4px 18px;border:1px solid #dce8eb;border-radius:20px;background:#fff;box-shadow:0 10px 26px rgba(15,81,107,.07)}
+          .txe-deleted-item{display:grid;grid-template-columns:50px minmax(0,1fr) auto;align-items:center;gap:13px;padding:15px 0;border-bottom:1px solid #edf1f2}.txe-deleted-item:last-child{border-bottom:0}
+          .txe-deleted-meta{display:block;margin-top:4px;color:#0f7893;font-size:.78rem;font-weight:800}.txe-deleted-empty{padding:42px 20px;border:1px solid #dce8eb;border-radius:20px;background:#fff;color:#68777d;text-align:center;font-weight:850;box-shadow:0 10px 26px rgba(15,81,107,.07)}
           .txe-root{position:fixed;inset:0;z-index:1600;background:#f4f7f8;color:#17313d;overflow:auto}
           .txe-head{position:sticky;top:0;z-index:2;padding:calc(9px + env(safe-area-inset-top,0px)) 10px 12px;background:linear-gradient(135deg,#087b96,#27bfd2);color:#fff}
           .txe-head-row{display:grid;grid-template-columns:88px minmax(0,1fr) 88px;align-items:center}
@@ -189,7 +198,7 @@
           @media(min-width:900px){
             .txe-page{padding-bottom:40px}.txe-fab{bottom:28px}
             .txe-root{left:50%;right:auto;width:min(720px,calc(100vw - 48px));transform:translateX(-50%);box-shadow:0 0 80px rgba(0,35,62,.22)}
-            .txe-selector-body{width:min(720px,calc(100% - 40px));margin:auto}
+            .txe-selector-body,.txe-deleted-body{width:min(720px,calc(100% - 40px));margin:auto}
           }
         `;
         doc.head.appendChild(style);
@@ -199,6 +208,28 @@
         const allocations = Array.isArray(transaction.allocations) ? transaction.allocations : [];
         return allocations.map(item => item.budgetItemName || item.name).filter(Boolean).join(", ")
           || transaction.budgetItemName || transaction.category || "Unassigned";
+      }
+
+      function isDeletedTransaction(transaction) {
+        return Boolean(transaction?.deleted || transaction?.isDeleted || transaction?.deletedAt);
+      }
+
+      function deletedTransactions(state) {
+        const monthlyBudgets = ensureState(state).settings.monthlyBudgets;
+        const rows = [];
+        const seen = new Set();
+        Object.entries(monthlyBudgets).forEach(([month, budget]) => {
+          const archived = Array.isArray(budget?.deletedTransactions) ? budget.deletedTransactions : [];
+          const flagged = Array.isArray(budget?.transactions) ? budget.transactions.filter(isDeletedTransaction) : [];
+          [...archived, ...flagged].forEach((transaction, index) => {
+            const key = `${month}:${transaction?.id || transaction?.deletedAt || transaction?.createdAt || index}`;
+            if (seen.has(key)) return;
+            seen.add(key);
+            rows.push({ month, transaction });
+          });
+        });
+        return rows.sort((a, b) => String(b.transaction.deletedAt || b.transaction.date || b.transaction.createdAt || "")
+          .localeCompare(String(a.transaction.deletedAt || a.transaction.date || a.transaction.createdAt || "")));
       }
 
       function transactionRows(transactions) {
@@ -213,6 +244,18 @@
         }).join("");
       }
 
+      function deletedTransactionRows(rows) {
+        return rows.map(({ month, transaction }) => {
+          const date = dayParts(transaction.date || transaction.deletedAt);
+          const amount = cents(transaction.amount);
+          return `<article class="txe-deleted-item">
+            <span class="txe-date">${esc(date.month)}<br>${esc(date.day)}</span>
+            <span><span class="txe-name">${esc(transaction.merchant || transaction.source || "Transaction")}</span><span class="txe-deleted-meta">${esc(allocationCategory(transaction))} · ${esc(monthLabel(month))}</span></span>
+            <span class="txe-amount">${transaction.type === "income" ? "+" : "-"}${money.format(amount)}</span>
+          </article>`;
+        }).join("");
+      }
+
       function renderTransactions(doc, activeButton, monthOverride = "") {
         injectStyles(doc);
         const win = doc.defaultView;
@@ -220,7 +263,9 @@
         const month = validMonth(monthOverride) ? monthOverride : selectedMonth(state);
         const budget = budgetFor(state, month, false);
         const transactions = [...(budget?.transactions || [])]
+          .filter(transaction => !isDeletedTransaction(transaction))
           .sort((a, b) => String(b.date || "").localeCompare(String(a.date || "")) || String(b.createdAt || "").localeCompare(String(a.createdAt || "")));
+        const deletedCount = deletedTransactions(state).length;
         const screen = doc.getElementById("screen");
         if (!screen) return;
         try {
@@ -234,6 +279,7 @@
             <label class="txe-search"><span>⌕</span><input type="search" placeholder="Search transactions" aria-label="Search transactions"></label>
           </header>
           <main class="txe-wrap">
+            <button type="button" class="txe-deleted-link" data-txe-deleted><span>♲</span><span>Deleted Transactions</span><span class="txe-deleted-count">${deletedCount ? `${deletedCount} ›` : "›"}</span></button>
             ${transactions.length
               ? `<article class="txe-card"><div class="txe-month">${esc(monthLabel(month))}</div>${transactionRows(transactions)}<div class="txe-no-results">No transactions match your search.</div></article>`
               : `<section class="txe-empty"><h2>Track your first transaction</h2><p>Enter an expense or income transaction and assign it to the correct budget item.</p><button type="button" class="txe-primary" data-txe-add>Track My First Transaction</button></section>`}
@@ -252,6 +298,20 @@
           });
           screen.querySelector(".txe-no-results")?.classList.toggle("show", Boolean(query) && visible === 0);
         });
+      }
+
+      function renderDeletedTransactions(doc, activeButton) {
+        injectStyles(doc);
+        const state = ensureState(readState(doc.defaultView));
+        const rows = deletedTransactions(state);
+        const screen = doc.getElementById("screen");
+        if (!screen) return;
+        screen.dataset.transactionsShell = "deleted";
+        screen.innerHTML = `<section class="txe-deleted-page">
+          <header class="txe-deleted-head"><button type="button" class="txe-deleted-back" data-txe-deleted-back>‹ Back</button><div class="txe-deleted-title">Deleted Transactions</div><span></span></header>
+          <main class="txe-deleted-body">${rows.length ? `<section class="txe-deleted-card">${deletedTransactionRows(rows)}</section>` : '<div class="txe-deleted-empty">No deleted transactions yet.</div>'}</main>
+        </section>`;
+        markActive(doc, activeButton);
       }
 
       function evenSplit(total, count) {
@@ -561,8 +621,8 @@
 
       function install(doc) {
         const win = doc.defaultView;
-        if (!doc.body || win.__transactionEntryV74) return;
-        win.__transactionEntryV74 = true;
+        if (!doc.body || win.__transactionEntryV75) return;
+        win.__transactionEntryV75 = true;
         injectStyles(doc);
 
         doc.addEventListener("click", event => {
@@ -571,6 +631,20 @@
             event.preventDefault();
             event.stopPropagation();
             renderTransactions(doc, navButton);
+            return;
+          }
+          const deleted = event.target.closest?.("[data-txe-deleted]");
+          if (deleted) {
+            event.preventDefault();
+            const activeButton = [...doc.querySelectorAll("#dw-primary-nav button,#tabbar button")].find(button => transactionButton(button));
+            renderDeletedTransactions(doc, activeButton);
+            return;
+          }
+          const deletedBack = event.target.closest?.("[data-txe-deleted-back]");
+          if (deletedBack) {
+            event.preventDefault();
+            const activeButton = [...doc.querySelectorAll("#dw-primary-nav button,#tabbar button")].find(button => transactionButton(button));
+            renderTransactions(doc, activeButton);
             return;
           }
           const add = event.target.closest?.("[data-txe-add]");
@@ -583,7 +657,7 @@
         [100, 400, 900].forEach(delay => win.setTimeout(() => {
           let activePage = "";
           try { activePage = win.sessionStorage.getItem(PAGE_KEY) || win.localStorage.getItem(PAGE_KEY) || ""; } catch {}
-          if (activePage !== "transactions" || doc.querySelector(".txe-page")) return;
+          if (activePage !== "transactions" || doc.querySelector(".txe-page,.txe-deleted-page")) return;
           const button = [...doc.querySelectorAll("#dw-primary-nav button,#tabbar button")].find(item => transactionButton(item));
           if (button) renderTransactions(doc, button);
         }, delay));
