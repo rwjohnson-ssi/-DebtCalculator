@@ -14,7 +14,7 @@
   </style>
 </head>
 <body>
-  <iframe id="app-host" title="DebtWizard" src="mobile.html?v=72" allow="clipboard-read; clipboard-write"></iframe>
+  <iframe id="app-host" title="DebtWizard" src="mobile.html?v=73" allow="clipboard-read; clipboard-write"></iframe>
   <script>
     (() => {
       "use strict";
@@ -71,9 +71,9 @@
       }
 
       function ensureStyles(doc) {
-        if (doc.getElementById("dw-transaction-route-v72")) return;
+        if (doc.getElementById("dw-transaction-route-v73")) return;
         const style = doc.createElement("style");
-        style.id = "dw-transaction-route-v72";
+        style.id = "dw-transaction-route-v73";
         style.textContent = `
           .dw-trans-page{min-height:calc(100vh - 74px);background:#f4f6f7;padding-bottom:118px;color:#172d38}
           .dw-trans-hero{background:linear-gradient(135deg,#cdeff4,#eafcfe);color:#0f516b;padding:calc(18px + env(safe-area-inset-top,0px)) 26px 22px;border-bottom:1px solid #b9e3ea}
@@ -261,25 +261,35 @@
       function selectedItems(sheet) {
         try {
           const parsed = JSON.parse(sheet.dataset.budgetItems || "[]");
-          return Array.isArray(parsed)
-            ? parsed.map(item => ({
-                id:String(item.id || item.budgetItemId || ""),
-                name:String(item.name || item.budgetItemName || "Budget item"),
-                amount:cents(item.amount)
-              })).filter(item => item.id)
-            : [];
+          if (!Array.isArray(parsed)) return [];
+          const unique = new Map();
+          parsed.forEach(item => {
+            const normalized = {
+              id:String(item.id || item.budgetItemId || ""),
+              name:String(item.name || item.budgetItemName || "Budget item"),
+              amount:cents(item.amount)
+            };
+            if (normalized.id && !unique.has(normalized.id)) unique.set(normalized.id, normalized);
+          });
+          return [...unique.values()];
         } catch {
           return [];
         }
       }
 
       function writeSelectedItems(sheet, items) {
-        sheet.dataset.budgetItems = JSON.stringify(items.map(item => ({
-          id:String(item.id),
-          name:String(item.name),
-          amount:cents(item.amount)
-        })));
-        sheet.dataset.dwAllocationCount = String(items.length);
+        const unique = new Map();
+        items.forEach(item => {
+          const id = String(item.id || "");
+          if (id && !unique.has(id)) unique.set(id, {
+            id,
+            name:String(item.name || "Budget item"),
+            amount:cents(item.amount)
+          });
+        });
+        const next = [...unique.values()];
+        sheet.dataset.budgetItems = JSON.stringify(next);
+        sheet.dataset.dwAllocationCount = String(next.length);
       }
 
       function evenlySplit(total, count) {
@@ -294,11 +304,27 @@
         });
       }
 
+      function hideCompetingPanel(node) {
+        if (!node) return;
+        node.hidden = true;
+        node.setAttribute("aria-hidden", "true");
+        node.style.setProperty("display", "none", "important");
+      }
+
+      function normalizeSplitPanels(doc, sheet = doc.querySelector(".dw-tx-sheet")) {
+        if (!sheet) return;
+        const directPanels = [...sheet.querySelectorAll(".dw-direct-split")];
+        directPanels.slice(1).forEach(panel => panel.remove());
+        if (!directPanels.length) return;
+        sheet.querySelectorAll(".dw-tx-selected-items,.dw-tx-selected-fallback,.dw-tx-split-summary")
+          .forEach(hideCompetingPanel);
+      }
+
       function removeCompetingControls(doc, sheet) {
-        doc.querySelector(".dw-selector,.dw-selector-fallback")?.remove();
-        sheet?.querySelector(".dw-tx-selected-items")?.remove();
-        sheet?.querySelector(".dw-tx-selected-fallback")?.remove();
-        sheet?.querySelector(".dw-tx-split-summary")?.remove();
+        doc.querySelectorAll(".dw-selector,.dw-selector-fallback").forEach(node => node.remove());
+        if (!sheet) return;
+        sheet.querySelectorAll(".dw-tx-selected-items,.dw-tx-selected-fallback,.dw-tx-split-summary")
+          .forEach(hideCompetingPanel);
       }
 
       function updateSplitSummary(sheet) {
@@ -324,8 +350,9 @@
 
       function renderSplitItems(doc, sheet) {
         removeCompetingControls(doc, sheet);
-        sheet.querySelector(".dw-direct-split")?.remove();
+        sheet.querySelectorAll(".dw-direct-split").forEach(panel => panel.remove());
         const items = selectedItems(sheet);
+        writeSelectedItems(sheet, items);
         const budgetButton = sheet.querySelector(".dw-tx-budget-row");
         const action = budgetButton?.querySelector("em");
         if (action) action.textContent = items.length ? "Add another ›" : "Select ›";
@@ -344,6 +371,7 @@
           </label>`).join("")}
           <div class="dw-direct-split-summary"></div>`;
         budgetButton.insertAdjacentElement("beforebegin", panel);
+        normalizeSplitPanels(doc, sheet);
         updateSplitSummary(sheet);
       }
 
@@ -357,19 +385,22 @@
           ? dateField.value.slice(0, 7) : monthKey(doc);
         const budget = state.settings?.monthlyBudgets?.[month] || {};
         const source = sheetType(sheet) === "income" ? budget.incomeItems : budget.bills;
-        return (Array.isArray(source) ? source : [])
-          .map(item => ({
+        const unique = new Map();
+        (Array.isArray(source) ? source : []).forEach(item => {
+          const choice = {
             id:String(item.id || ""),
             name:String(item.name || (sheetType(sheet) === "income" ? "Income" : "Budget item")),
             planned:cents(item.amount)
-          }))
-          .filter(item => item.id && item.name);
+          };
+          if (choice.id && choice.name && !unique.has(choice.id)) unique.set(choice.id, choice);
+        });
+        return [...unique.values()];
       }
 
       function openBudgetSelector(doc, sheet) {
         ensureStyles(doc);
         removeCompetingControls(doc, sheet);
-        doc.querySelector(".dw-direct-selector")?.remove();
+        doc.querySelectorAll(".dw-direct-selector").forEach(node => node.remove());
 
         const choices = budgetChoices(doc, sheet);
         const existing = new Map(selectedItems(sheet).map(item => [item.id, item]));
@@ -450,8 +481,19 @@
 
       function installSplitController(doc) {
         const win = doc.defaultView;
-        if (win.__dwDirectTransactionSplitV72) return;
-        win.__dwDirectTransactionSplitV72 = true;
+        if (win.__dwDirectTransactionSplitV73) return;
+        win.__dwDirectTransactionSplitV73 = true;
+
+        let cleanupQueued = false;
+        const queueCleanup = () => {
+          if (cleanupQueued) return;
+          cleanupQueued = true;
+          win.requestAnimationFrame(() => {
+            cleanupQueued = false;
+            normalizeSplitPanels(doc);
+          });
+        };
+        new win.MutationObserver(queueCleanup).observe(doc.body, { childList:true, subtree:true });
 
         win.addEventListener("click", event => {
           const budgetButton = event.target.closest?.(".dw-tx-budget-row");
@@ -511,8 +553,8 @@
 
       function install(doc) {
         const win = doc.defaultView;
-        if (!doc.body || win.__dwTransactionRouteV72) return;
-        win.__dwTransactionRouteV72 = true;
+        if (!doc.body || win.__dwTransactionRouteV73) return;
+        win.__dwTransactionRouteV73 = true;
         installSplitController(doc);
 
         doc.addEventListener("click", event => {
