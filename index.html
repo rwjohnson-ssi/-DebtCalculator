@@ -11,117 +11,91 @@
   <style>html,body{width:100%;height:100%;margin:0;overflow:hidden;background:#eef3f5}#app-host{display:block;width:100%;height:100%;border:0;background:#eef3f5}</style>
 </head>
 <body>
-  <iframe id="app-host" title="DebtWizard" src="mobile.html?v=80" allow="clipboard-read; clipboard-write"></iframe>
-  <script src="transaction-core-v76.js?v=5"></script>
+  <iframe id="app-host" title="DebtWizard" src="mobile.html?v=81" allow="clipboard-read; clipboard-write"></iframe>
+  <script src="transaction-core-v76.js?v=6"></script>
+  <script src="transaction-list-v76.js?v=6"></script>
+  <script src="transaction-alloc-v76.js?v=6"></script>
+  <script src="transaction-edit-v76.js?v=6"></script>
+  <script src="transaction-boot-v76.js?v=6"></script>
   <script>
     (() => {
       "use strict";
       const T = window.DWTx76;
       if (!T?.host) return;
 
-      const transactionControl = target => {
-        const control = target?.closest?.("button,[role='button'],a");
-        if (!control || !control.closest("#dw-primary-nav,#tabbar")) return null;
-        const page = String(control.dataset.page || "").trim().toLowerCase();
-        const label = `${control.getAttribute("aria-label") || ""} ${control.textContent || ""}`
-          .replace(/\s+/g, " ")
-          .trim()
-          .toLowerCase();
-        return control.matches(".dw-nav-transaction,[data-edp-trans-nav],[data-dw-transaction-route]")
-          || page === "transaction"
-          || page === "transactions"
-          || /(^|\s)(add\s+)?transactions?(\s|$)/.test(label)
-          ? control
-          : null;
-      };
-
-      T.transactionButton = transactionControl;
-      T.markActive = doc => {
-        doc.querySelectorAll("#dw-primary-nav,#tabbar").forEach(nav => {
-          nav.querySelectorAll("button,[role='button'],a").forEach(control => {
-            control.classList.remove("active");
-            control.removeAttribute("aria-current");
-            if (control.hasAttribute("aria-selected")) control.setAttribute("aria-selected", "false");
-          });
-          const transaction = [...nav.querySelectorAll("button,[role='button'],a")]
-            .find(control => transactionControl(control));
-          if (!transaction) return;
-          transaction.classList.add("active");
-          transaction.setAttribute("aria-current", "page");
-          if (transaction.hasAttribute("aria-selected")) transaction.setAttribute("aria-selected", "true");
-        });
-      };
-
-      const installRoute = doc => {
-        const win = doc?.defaultView;
-        if (!win || win.__transactionDirectRouteV80) return;
-        win.__transactionDirectRouteV80 = true;
-        let lastPointerActivation = 0;
-
-        const normalizeControls = () => {
-          doc.querySelectorAll("#dw-primary-nav button,#tabbar button,#dw-primary-nav [role='button'],#tabbar [role='button']")
-            .forEach(control => {
-              if (!transactionControl(control)) return;
-              control.classList.add("dw-nav-transaction");
-              control.dataset.dwTransactionRoute = "transactions";
-              control.dataset.page = "transactions";
-              control.setAttribute("aria-label", "Transactions");
-              control.removeAttribute("data-edp-trans-add");
-              control.removeAttribute("data-edp-trans-nav");
-            });
-        };
-
-        const openTransactions = (event, button) => {
-          event.preventDefault();
-          event.stopPropagation();
-          event.stopImmediatePropagation();
-          try {
-            win.localStorage.setItem(T.PAGE_KEY, "transactions");
-            win.sessionStorage.setItem(T.PAGE_KEY, "transactions");
-          } catch {}
-          if (typeof T.renderTransactions === "function") T.renderTransactions(doc, button);
-          else win.setTimeout(() => T.renderTransactions?.(doc, button), 0);
-        };
-
-        win.addEventListener("pointerup", event => {
-          const button = transactionControl(event.target);
-          if (!button) return;
-          lastPointerActivation = Date.now();
-          openTransactions(event, button);
-        }, true);
-
-        win.addEventListener("click", event => {
-          const button = transactionControl(event.target);
-          if (!button) return;
-          if (Date.now() - lastPointerActivation <= 700) {
-            event.preventDefault();
-            event.stopPropagation();
-            event.stopImmediatePropagation();
-            return;
-          }
-          openTransactions(event, button);
-        }, true);
-
-        new MutationObserver(normalizeControls).observe(doc.body, { childList:true, subtree:true });
-        normalizeControls();
-      };
+      const ROUTE = "transactions";
 
       const install = () => {
-        try {
-          const doc = T.host.contentDocument;
-          if (doc?.body) installRoute(doc);
-        } catch (error) {
-          console.error("Transaction navigation could not be installed.", error);
-        }
+        const doc = T.host.contentDocument;
+        const win = doc?.defaultView;
+        if (!doc?.body || !win || win.__nativeTransactionsRouteV81) return;
+        win.__nativeTransactionsRouteV81 = true;
+
+        const isTransactionControl = control => {
+          if (!control?.matches?.("button,[role='button'],a")) return false;
+          if (!control.closest("#dw-primary-nav,#tabbar")) return false;
+          const page = String(control.dataset.page || "").trim().toLowerCase();
+          const label = `${control.getAttribute("aria-label") || ""} ${control.textContent || ""}`
+            .replace(/\s+/g, " ")
+            .trim()
+            .toLowerCase();
+          return control.matches(".dw-nav-transaction,[data-edp-trans-add],[data-edp-trans-nav]")
+            || page === "transaction"
+            || page === ROUTE
+            || /(^|\s)(add\s+)?transactions?(\s|$)/.test(label);
+        };
+
+        const findTransactionControl = () => [...doc.querySelectorAll("#dw-primary-nav button,#tabbar button,#dw-primary-nav [role='button'],#tabbar [role='button'],#dw-primary-nav a,#tabbar a")]
+          .find(isTransactionControl) || null;
+
+        const renderTransactions = fallbackButton => {
+          const button = findTransactionControl() || fallbackButton || null;
+          if (typeof T.renderTransactions === "function") T.renderTransactions(doc, button);
+        };
+
+        const openFromNativeRoute = button => {
+          try {
+            win.localStorage.setItem(T.PAGE_KEY, ROUTE);
+            win.sessionStorage.setItem(T.PAGE_KEY, ROUTE);
+          } catch {}
+          [0, 60, 180].forEach(delay => win.setTimeout(() => renderTransactions(button), delay));
+        };
+
+        const normalize = () => {
+          const controls = [...doc.querySelectorAll("#dw-primary-nav button,#tabbar button,#dw-primary-nav [role='button'],#tabbar [role='button'],#dw-primary-nav a,#tabbar a")]
+            .filter(isTransactionControl);
+
+          controls.forEach((control, index) => {
+            if (index > 0 && control.closest("#tabbar") === controls[0]?.closest("#tabbar")) {
+              control.remove();
+              return;
+            }
+
+            control.classList.add("dw-nav-transaction");
+            control.dataset.act = "nav";
+            control.dataset.page = ROUTE;
+            control.setAttribute("aria-label", "Transactions");
+            control.removeAttribute("data-edp-trans-add");
+            control.removeAttribute("data-edp-trans-nav");
+
+            if (control.dataset.nativeTransactionsBound === "1") return;
+            control.dataset.nativeTransactionsBound = "1";
+            control.addEventListener("click", () => openFromNativeRoute(control));
+          });
+        };
+
+        // The old transaction boot listener checks this function during capture.
+        // Returning null allows the app's normal data-act="nav" handler to run.
+        T.transactionButton = () => null;
+        T.findTransactionButton = () => findTransactionControl();
+
+        new MutationObserver(normalize).observe(doc.body, { childList:true, subtree:true });
+        normalize();
       };
 
       T.host.addEventListener("load", install);
       install();
     })();
   </script>
-  <script src="transaction-list-v76.js?v=5"></script>
-  <script src="transaction-alloc-v76.js?v=5"></script>
-  <script src="transaction-edit-v76.js?v=5"></script>
-  <script src="transaction-boot-v76.js?v=5"></script>
 </body>
 </html>
