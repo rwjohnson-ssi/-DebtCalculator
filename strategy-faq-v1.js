@@ -4,10 +4,7 @@
   const screen = document.getElementById("screen");
   if (!screen) return;
 
-  const SELECTOR_FIX_BUILD = "3";
-  const STORAGE_KEY = "debt-calculator-v2";
-  const txMoney = new Intl.NumberFormat("en-US", { style:"currency", currency:"USD" });
-
+  const FAQ_BUILD = "4";
   const faqItems = [
     {
       question: "What is the debt snowball?",
@@ -70,166 +67,23 @@
     }
   ];
 
-  const txValue = input => Number.isFinite(Number.parseFloat(String(input ?? "").replace(/[^0-9.-]/g, "")))
-    ? Number.parseFloat(String(input ?? "").replace(/[^0-9.-]/g, ""))
-    : 0;
-  const txCents = input => Math.max(0, Math.round((txValue(input) + Number.EPSILON) * 100) / 100);
-  const txEsc = input => String(input ?? "").replace(/[&<>'"]/g, char => ({ "&":"&amp;", "<":"&lt;", ">":"&gt;", "'":"&#39;", '"':"&quot;" }[char]));
-
-  function ensureTransactionSelectorStyles() {
-    if (document.getElementById(`dw-transaction-selector-fix-v${SELECTOR_FIX_BUILD}`)) return;
-    document.querySelectorAll('[id^="dw-transaction-selector-fix-v"]').forEach(node => node.remove());
+  function installSingleSplitOwnerStyles() {
+    const styleId = `dw-single-transaction-split-v${FAQ_BUILD}`;
+    if (document.getElementById(styleId)) return;
+    document.querySelectorAll('[id^="dw-single-transaction-split-v"]').forEach(node => node.remove());
     const style = document.createElement("style");
-    style.id = `dw-transaction-selector-fix-v${SELECTOR_FIX_BUILD}`;
+    style.id = styleId;
     style.textContent = `
-      .dw-selector-fallback{position:fixed;z-index:1800;inset:0;background:#f4f6f7;display:flex;flex-direction:column;color:#173f50}
-      .dw-selector-fallback-head{display:grid;grid-template-columns:78px 1fr 78px;align-items:center;padding:calc(14px + env(safe-area-inset-top,0px)) 18px 14px;background:linear-gradient(135deg,#0791aa,#31c5d9);color:#fff}
-      .dw-selector-fallback-head strong{text-align:center;font-size:1.08rem;font-weight:900}
-      .dw-selector-fallback-head button{border:0;background:transparent;color:#fff;font:inherit;font-weight:850;padding:10px 0}
-      .dw-selector-fallback-head button:last-child{text-align:right}
-      .dw-selector-fallback-body{flex:1;overflow:auto;padding:20px 18px calc(28px + env(safe-area-inset-bottom,0px))}
-      .dw-selector-fallback-note{margin:0 0 14px;color:#66777e;line-height:1.35}
-      .dw-selector-fallback-list{overflow:hidden;border:1px solid #dce8eb;border-radius:20px;background:#fff;box-shadow:0 10px 28px rgba(22,43,52,.06)}
-      .dw-selector-fallback-item{width:100%;min-height:64px;display:grid;grid-template-columns:34px minmax(0,1fr);gap:12px;align-items:center;border:0;border-bottom:1px solid #e7edef;background:#fff;padding:12px 16px;color:#26363d;text-align:left;font:inherit;font-weight:850}
-      .dw-selector-fallback-item:last-child{border-bottom:0}
-      .dw-selector-fallback-check{width:25px;height:25px;display:grid;place-items:center;border:2px solid #9fb2b9;border-radius:8px;color:transparent;font-size:.92rem}
-      .dw-selector-fallback-item.selected{background:#eefafd}
-      .dw-selector-fallback-item.selected .dw-selector-fallback-check{border-color:#0c91ad;background:#0c91ad;color:#fff}
-      .dw-selector-fallback-empty{padding:22px;color:#6f7d82;text-align:center}
-      .dw-tx-selected-fallback{overflow:hidden;padding:0!important;margin-bottom:0!important;border-radius:20px 20px 0 0!important}
-      .dw-tx-selected-fallback-row{display:grid;grid-template-columns:38px minmax(0,1fr) 128px;gap:12px;align-items:center;min-height:64px;padding:8px 16px;border-bottom:1px solid #e6ebee;background:#fff}
-      .dw-tx-selected-fallback-row strong{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:#24414d}
-      .dw-tx-selected-fallback-remove{width:29px;height:29px;display:grid;place-items:center;border:0;border-radius:50%;background:#e94949;color:#fff;font-size:1.25rem;line-height:1}
-      .dw-tx-selected-fallback-row input{box-sizing:border-box;width:100%;min-width:0;min-height:44px;border:0;border-radius:10px;background:#f7fbfc;padding:8px 10px;color:#087f9a;font-size:1rem;font-weight:850;text-align:right;outline:0}
-      .dw-tx-selected-fallback-footer{padding:14px 18px;background:#075f87;color:#fff;text-align:center;font-weight:900;font-size:1rem}
-      .dw-tx-selected-fallback + .dw-tx-budget-row{border-radius:0 0 20px 20px!important}
+      .dw-tx-sheet:has(.dw-direct-split) .dw-tx-selected-items,
+      .dw-tx-sheet:has(.dw-direct-split) .dw-tx-selected-fallback,
+      .dw-tx-sheet:has(.dw-direct-split) .dw-tx-split-summary {
+        display: none !important;
+      }
+      .dw-tx-sheet .dw-direct-split ~ .dw-direct-split {
+        display: none !important;
+      }
     `;
     document.head.appendChild(style);
-  }
-
-  function transactionSheetItems(sheet) {
-    try {
-      const parsed = JSON.parse(sheet?.dataset.budgetItems || "[]");
-      return Array.isArray(parsed)
-        ? parsed.map(item => ({ id:String(item.id || ""), name:String(item.name || "Budget item"), amount:txCents(item.amount) })).filter(item => item.id)
-        : [];
-    } catch { return []; }
-  }
-
-  function transactionAmount(sheet) {
-    const amountField = [...(sheet?.querySelectorAll(".dw-tx-field") || [])]
-      .find(field => field.querySelector("span")?.textContent?.trim() === "Amount");
-    const input = amountField?.querySelector("input");
-    return txCents(input?.dataset.rawValue || input?.value);
-  }
-
-  function updateFallbackRemaining(sheet) {
-    const footer = sheet?.querySelector(".dw-tx-selected-fallback-footer");
-    if (!footer) return;
-    const items = transactionSheetItems(sheet);
-    const remaining = Math.max(0, txCents(transactionAmount(sheet) - items.reduce((sum, item) => sum + txCents(item.amount), 0)));
-    footer.textContent = `${txMoney.format(remaining)} Left to Split`;
-  }
-
-  function renderFallbackAllocations(sheet) {
-    if (!sheet) return;
-    const budgetRow = sheet.querySelector(".dw-tx-budget-row");
-    if (!budgetRow) return;
-    sheet.querySelector(".dw-tx-selected-fallback")?.remove();
-    const items = transactionSheetItems(sheet);
-    const action = budgetRow.querySelector("em");
-    if (action) action.textContent = items.length ? "Add another ›" : "Select ›";
-    if (!items.length) return;
-
-    const panel = document.createElement("section");
-    panel.className = "dw-tx-panel dw-tx-selected-fallback";
-    panel.innerHTML = `${items.map(item => `
-      <label class="dw-tx-selected-fallback-row" data-dw-selected-item="${txEsc(item.id)}">
-        <button type="button" class="dw-tx-selected-fallback-remove" data-dw-remove-selected-fallback="${txEsc(item.id)}" aria-label="Remove ${txEsc(item.name)}">−</button>
-        <strong>${txEsc(item.name)}</strong>
-        <input type="number" min="0" step="0.01" inputmode="decimal" value="${item.amount > .004 ? item.amount.toFixed(2) : ""}" placeholder="0.00" aria-label="${txEsc(item.name)} split amount">
-      </label>`).join("")}
-      <div class="dw-tx-selected-fallback-footer"></div>`;
-    budgetRow.insertAdjacentElement("beforebegin", panel);
-    updateFallbackRemaining(sheet);
-  }
-
-  function currentBudgetChoices(sheet) {
-    const state = (() => {
-      try { return JSON.parse(localStorage.getItem(STORAGE_KEY)) || {}; }
-      catch { return {}; }
-    })();
-    const dateInput = [...(sheet.querySelectorAll(".dw-tx-field") || [])]
-      .find(field => field.querySelector("span")?.textContent?.trim() === "Date")?.querySelector("input");
-    const month = /^\d{4}-\d{2}-\d{2}$/.test(dateInput?.value || "")
-      ? dateInput.value.slice(0,7)
-      : new Date().toISOString().slice(0,7);
-    const budget = state.settings?.monthlyBudgets?.[month] || {};
-    const income = !!sheet.querySelector('.dw-tx-toggle [data-edp-trans-type="income"].active');
-    const source = income ? budget.incomeItems : budget.bills;
-    return (Array.isArray(source) ? source : [])
-      .map(item => ({ id:String(item.id || ""), name:String(item.name || (income ? "Income" : "Budget item")) }))
-      .filter(item => item.id && item.name);
-  }
-
-  function openFallbackSelector(sheet) {
-    ensureTransactionSelectorStyles();
-    document.querySelector(".dw-selector-fallback")?.remove();
-    const choices = currentBudgetChoices(sheet);
-    const existing = new Map(transactionSheetItems(sheet).map(item => [item.id, item]));
-    const selected = new Set(existing.keys());
-    const overlay = document.createElement("section");
-    overlay.className = "dw-selector-fallback";
-    overlay.setAttribute("role", "dialog");
-    overlay.setAttribute("aria-modal", "true");
-    overlay.setAttribute("aria-label", "Select budget items");
-
-    const paint = () => {
-      overlay.innerHTML = `
-        <header class="dw-selector-fallback-head">
-          <button type="button" data-dw-selector-fallback-cancel>Cancel</button>
-          <strong>Select Budget Items</strong>
-          <button type="button" data-dw-selector-fallback-done>Done</button>
-        </header>
-        <main class="dw-selector-fallback-body">
-          <p class="dw-selector-fallback-note">Choose one item to apply the full transaction automatically, or choose multiple items to split the amount.</p>
-          <div class="dw-selector-fallback-list">
-            ${choices.length ? choices.map(item => `
-              <button type="button" class="dw-selector-fallback-item ${selected.has(item.id) ? "selected" : ""}" data-dw-selector-fallback-item="${txEsc(item.id)}">
-                <span class="dw-selector-fallback-check">✓</span><span>${txEsc(item.name)}</span>
-              </button>`).join("") : '<div class="dw-selector-fallback-empty">No budget items are available for this month.</div>'}
-          </div>
-        </main>`;
-    };
-
-    overlay.addEventListener("click", event => {
-      const itemButton = event.target.closest("[data-dw-selector-fallback-item]");
-      if (itemButton) {
-        const id = itemButton.dataset.dwSelectorFallbackItem;
-        selected.has(id) ? selected.delete(id) : selected.add(id);
-        paint();
-        return;
-      }
-      if (event.target.closest("[data-dw-selector-fallback-cancel]")) {
-        overlay.remove();
-        return;
-      }
-      if (event.target.closest("[data-dw-selector-fallback-done]")) {
-        const next = choices.filter(item => selected.has(item.id)).map(item => ({
-          id:item.id,
-          name:item.name,
-          amount:existing.get(item.id)?.amount || 0
-        }));
-        sheet.dataset.budgetItems = JSON.stringify(next);
-        sheet.dataset.dwAllocationCount = String(next.length);
-        overlay.remove();
-        renderFallbackAllocations(sheet);
-        sheet.dispatchEvent(new Event("change", { bubbles:true }));
-      }
-    });
-
-    paint();
-    document.body.appendChild(overlay);
   }
 
   function isStrategyScreen() {
@@ -279,30 +133,6 @@
   }
 
   document.addEventListener("click", event => {
-    const budgetButton = event.target.closest(".dw-tx-budget-row");
-    if (budgetButton) {
-      const sheet = budgetButton.closest(".dw-tx-sheet");
-      if (!sheet) return;
-      event.preventDefault();
-      event.stopPropagation();
-      event.stopImmediatePropagation();
-      openFallbackSelector(sheet);
-      return;
-    }
-
-    const removeButton = event.target.closest("[data-dw-remove-selected-fallback]");
-    if (removeButton) {
-      const sheet = removeButton.closest(".dw-tx-sheet");
-      if (!sheet) return;
-      event.preventDefault();
-      const id = removeButton.dataset.dwRemoveSelectedFallback;
-      sheet.dataset.budgetItems = JSON.stringify(transactionSheetItems(sheet).filter(item => item.id !== id));
-      sheet.dataset.dwAllocationCount = String(transactionSheetItems(sheet).length);
-      renderFallbackAllocations(sheet);
-      sheet.dispatchEvent(new Event("change", { bubbles:true }));
-      return;
-    }
-
     const button = event.target.closest("[data-faq-toggle]");
     if (!button) return;
     event.preventDefault();
@@ -315,25 +145,8 @@
     answer.hidden = !opening;
   }, true);
 
-  document.addEventListener("input", event => {
-    const input = event.target.closest(".dw-tx-selected-fallback-row input");
-    if (!input) return;
-    const sheet = input.closest(".dw-tx-sheet");
-    const row = input.closest("[data-dw-selected-item]");
-    if (!sheet || !row) return;
-    const items = transactionSheetItems(sheet).map(item => item.id === row.dataset.dwSelectedItem
-      ? { ...item, amount:txCents(input.dataset.rawValue || input.value) }
-      : item);
-    sheet.dataset.budgetItems = JSON.stringify(items);
-    updateFallbackRemaining(sheet);
-  }, true);
+  new MutationObserver(queueEnsure).observe(document.body, { childList:true, subtree:true });
 
-  new MutationObserver(() => {
-    queueEnsure();
-    const sheet = document.querySelector(".dw-tx-sheet");
-    if (sheet && transactionSheetItems(sheet).length && !sheet.querySelector(".dw-tx-selected-fallback")) renderFallbackAllocations(sheet);
-  }).observe(document.body, { childList:true, subtree:true });
-
-  ensureTransactionSelectorStyles();
+  installSingleSplitOwnerStyles();
   queueEnsure();
 })();
