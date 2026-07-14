@@ -39,12 +39,20 @@
   };
   T.selectedMonth = state => T.validMonth(state.ui?.budgetMonth) ? state.ui.budgetMonth : T.currentMonth();
   T.transactionButton = target => {
-    const button = target?.closest?.("#dw-primary-nav button,#tabbar button");
+    const button = target?.closest?.("#dw-primary-nav button,#tabbar button,#dw-primary-nav [role='button'],#tabbar [role='button'],#dw-primary-nav a,#tabbar a");
     if (!button) return null;
+    const page = String(button.dataset.page || button.dataset.dwPage || "").trim().toLowerCase();
     const text = `${button.getAttribute("aria-label") || ""} ${button.textContent || ""}`.replace(/\s+/g, " ").trim().toLowerCase();
-    return button.matches(".dw-nav-transaction,[data-edp-trans-nav]") || text === "transactions" || text.endsWith(" transactions") ? button : null;
+    return button.matches(".dw-nav-transaction,[data-edp-trans-nav],[data-edp-trans-add],[data-dw-transaction-route]")
+      || page === "transaction"
+      || page === "transactions"
+      || /^(add\s+)?transactions?$/.test(text)
+      || text.endsWith(" transaction")
+      || text.endsWith(" transactions")
+      ? button
+      : null;
   };
-  T.findTransactionButton = doc => [...doc.querySelectorAll("#dw-primary-nav button,#tabbar button")].find(button => T.transactionButton(button)) || null;
+  T.findTransactionButton = doc => [...doc.querySelectorAll("#dw-primary-nav button,#tabbar button,#dw-primary-nav [role='button'],#tabbar [role='button'],#dw-primary-nav a,#tabbar a")].find(button => T.transactionButton(button)) || null;
   T.markActive = (doc, button) => { const nav = button?.closest("#dw-primary-nav,#tabbar"); nav?.querySelectorAll(".active").forEach(item => item.classList.remove("active")); button?.classList.add("active"); };
   T.injectStyles = doc => {
     if (doc.getElementById("transaction-entry-v76")) return;
