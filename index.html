@@ -11,7 +11,7 @@
   <style>html,body{width:100%;height:100%;margin:0;overflow:hidden;background:#eef3f5}#app-host{display:block;width:100%;height:100%;border:0;background:#eef3f5}</style>
 </head>
 <body>
-  <iframe id="app-host" title="DebtWizard" src="mobile.html?v=92" allow="clipboard-read; clipboard-write"></iframe>
+  <iframe id="app-host" title="DebtWizard" src="mobile.html?v=93" allow="clipboard-read; clipboard-write"></iframe>
   <script src="transaction-core-v76.js?v=10"></script>
   <script src="transaction-list-v76.js?v=10"></script>
   <script src="transaction-alloc-v76.js?v=10"></script>
@@ -118,7 +118,7 @@
         if (!doc?.body || doc.getElementById("dw-desktop-nav")) return;
 
         const style = doc.createElement("style");
-        style.id = "dw-desktop-nav-style-v5";
+        style.id = "dw-desktop-nav-style-v6";
         style.textContent = `
           #dw-desktop-nav{display:none}
           @media(min-width:900px){
@@ -144,6 +144,28 @@
             #dw-primary-nav,#tabbar{display:none!important;visibility:hidden!important;opacity:0!important;width:0!important;min-width:0!important;max-width:0!important;height:0!important;overflow:hidden!important;pointer-events:none!important;background:transparent!important}
             .budget-edit-backdrop,.edp-backdrop{z-index:1300!important}
             .budget-add-bill.budget-edit-popup,.edp-popup,.edp-date-popup{z-index:1301!important}
+            .budget-add-bill.budget-edit-popup,.edp-popup{
+              box-sizing:border-box!important;
+              left:calc(var(--dw-desktop-nav-width) + (100vw - var(--dw-desktop-nav-width))/2)!important;
+              right:auto!important;
+              width:min(720px,calc(100vw - var(--dw-desktop-nav-width) - 96px))!important;
+              max-width:720px!important;
+              max-height:min(82vh,760px)!important;
+              padding:28px 30px 26px!important;
+              border-radius:24px!important;
+              transform:translate(-50%,-50%)!important;
+              box-shadow:0 28px 80px rgba(7,47,64,.28)!important;
+            }
+            .budget-add-bill.budget-edit-popup::before,.edp-popup::before{margin-bottom:18px!important}
+            .budget-add-bill.budget-edit-popup .budget-card-title,.edp-title{margin-bottom:22px!important;font-size:1.55rem!important}
+            .edp-field{grid-template-columns:minmax(150px,.8fr) minmax(240px,1.2fr)!important;gap:24px!important;min-height:66px!important;padding:10px 0!important}
+            .edp-field input,.edp-field select{min-height:48px!important;padding:10px 14px!important;text-align:left!important}
+            .edp-note{padding:16px 0 10px!important}
+            .edp-note textarea{min-height:110px!important;padding:14px 16px!important}
+            .edp-actions{gap:12px!important;padding-top:18px!important}
+            .edp-actions .btn{min-height:52px!important;border-radius:13px!important}
+            .budget-add-bill.budget-edit-popup .budget-edit-actions{display:grid!important;grid-template-columns:1fr 1fr!important;gap:12px!important;padding-top:18px!important}
+            .budget-add-bill.budget-edit-popup .budget-edit-actions .btn{min-height:52px!important;border-radius:13px!important}
             #screen{padding-bottom:32px!important}
           }
         `;
