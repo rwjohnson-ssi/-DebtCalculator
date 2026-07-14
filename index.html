@@ -11,7 +11,7 @@
   <style>html,body{width:100%;height:100%;margin:0;overflow:hidden;background:#eef3f5}#app-host{display:block;width:100%;height:100%;border:0;background:#eef3f5}</style>
 </head>
 <body>
-  <iframe id="app-host" title="DebtWizard" src="mobile.html?v=89" allow="clipboard-read; clipboard-write"></iframe>
+  <iframe id="app-host" title="DebtWizard" src="mobile.html?v=90" allow="clipboard-read; clipboard-write"></iframe>
   <script src="transaction-core-v76.js?v=10"></script>
   <script src="transaction-list-v76.js?v=10"></script>
   <script src="transaction-alloc-v76.js?v=10"></script>
@@ -99,7 +99,7 @@
         if (!doc?.body || doc.getElementById("dw-desktop-nav")) return;
 
         const style = doc.createElement("style");
-        style.id = "dw-desktop-nav-style-v2";
+        style.id = "dw-desktop-nav-style-v3";
         style.textContent = `
           #dw-desktop-nav{display:none}
           @media(min-width:900px){
@@ -110,18 +110,18 @@
             #dw-desktop-nav .dw-desktop-brand{overflow:hidden;white-space:nowrap;font-size:1.55rem;font-weight:950;letter-spacing:-.04em}
             #dw-desktop-nav .dw-desktop-toggle{flex:0 0 44px;width:44px;height:44px;display:grid;place-items:center;border:0;border-radius:12px;background:rgba(255,255,255,.1);color:#fff;font:inherit;font-size:1.4rem;font-weight:900;cursor:pointer}
             #dw-desktop-nav .dw-desktop-list{display:grid;gap:10px}
-            #dw-desktop-nav .dw-desktop-item{box-sizing:border-box;width:100%;min-height:60px;display:grid;grid-template-columns:42px minmax(0,1fr);align-items:center;gap:12px;border:0;border-radius:14px;background:transparent;color:#fff;padding:9px 14px;text-align:left;font:inherit;font-size:1rem;font-weight:850;cursor:pointer}
+            #dw-desktop-nav .dw-desktop-item{box-sizing:border-box;width:100%;min-height:64px;display:grid;grid-template-columns:42px minmax(0,1fr);align-items:center;gap:12px;border:0;border-radius:14px;background:transparent;color:#fff;padding:10px 14px;text-align:left;font:inherit;font-size:1rem;font-weight:850;cursor:pointer}
             #dw-desktop-nav .dw-desktop-item:hover{background:rgba(255,255,255,.09)}
             #dw-desktop-nav .dw-desktop-item.active{background:linear-gradient(135deg,#0987b1,#08799f);box-shadow:0 8px 20px rgba(0,28,43,.2)}
             #dw-desktop-nav .dw-desktop-icon{display:grid;place-items:center;width:34px;height:34px;font-size:1.5rem;line-height:1}
-            #dw-desktop-nav .dw-desktop-label{min-width:0;overflow:hidden;white-space:nowrap;text-overflow:ellipsis}
+            #dw-desktop-nav .dw-desktop-label{min-width:0;overflow:visible;white-space:normal;text-overflow:clip;line-height:1.2}
             body.dw-desktop-nav-collapsed #dw-desktop-nav{padding-left:14px;padding-right:14px}
             body.dw-desktop-nav-collapsed #dw-desktop-nav .dw-desktop-head{justify-content:center}
             body.dw-desktop-nav-collapsed #dw-desktop-nav .dw-desktop-brand{display:none}
             body.dw-desktop-nav-collapsed #dw-desktop-nav .dw-desktop-toggle{transform:rotate(180deg)}
             body.dw-desktop-nav-collapsed #dw-desktop-nav .dw-desktop-item{grid-template-columns:1fr;justify-items:center;padding:9px}
             body.dw-desktop-nav-collapsed #dw-desktop-nav .dw-desktop-label{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
-            #tabbar{display:none!important}
+            #dw-primary-nav,#tabbar{display:none!important}
             #screen{padding-bottom:32px!important}
           }
         `;
