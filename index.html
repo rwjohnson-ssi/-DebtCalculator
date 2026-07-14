@@ -11,7 +11,7 @@
   <style>html,body{width:100%;height:100%;margin:0;overflow:hidden;background:#eef3f5}#app-host{display:block;width:100%;height:100%;border:0;background:#eef3f5}</style>
 </head>
 <body>
-  <iframe id="app-host" title="DebtWizard" src="mobile.html?v=87" allow="clipboard-read; clipboard-write"></iframe>
+  <iframe id="app-host" title="DebtWizard" src="mobile.html?v=88" allow="clipboard-read; clipboard-write"></iframe>
   <script src="transaction-core-v76.js?v=10"></script>
   <script src="transaction-list-v76.js?v=10"></script>
   <script src="transaction-alloc-v76.js?v=10"></script>
@@ -24,8 +24,6 @@
       if (!T) return;
 
       // transaction-boot-v76.js is the only Transactions route owner.
-      // It uses one delegated document listener, so navigation rebuilds do not
-      // remove the connection between the button and the Transactions page.
       T.markActive = doc => {
         doc.querySelectorAll("#dw-primary-nav,#tabbar").forEach(nav => {
           const controls = [...nav.querySelectorAll("button,[role='button'],a")];
@@ -41,6 +39,132 @@
           });
         });
       };
+
+      const frame = document.getElementById("app-host");
+      const COLLAPSED_KEY = "debtwizard-desktop-sidebar-collapsed";
+      const items = [
+        ["home", "Home", "⌂"],
+        ["debts", "Debts", "◔"],
+        ["transactions", "Transactions", "$"],
+        ["budget", "Budget", "$"],
+        ["strategy", "Payoff Strategy", "✦"],
+        ["plan", "Debt Payoff Plan", "▤"],
+        ["track", "Debt Payment Tracking", "✓"]
+      ];
+
+      function savedCollapsed() {
+        try { return localStorage.getItem(COLLAPSED_KEY) === "true"; } catch { return false; }
+      }
+
+      function saveCollapsed(value) {
+        try { localStorage.setItem(COLLAPSED_KEY, value ? "true" : "false"); } catch {}
+      }
+
+      function setActive(doc, page) {
+        doc.querySelectorAll("#dw-desktop-nav [data-dw-desktop-page]").forEach(button => {
+          const active = button.dataset.dwDesktopPage === page;
+          button.classList.toggle("active", active);
+          if (active) button.setAttribute("aria-current", "page");
+          else button.removeAttribute("aria-current");
+        });
+      }
+
+      function routeThroughExistingNavigation(doc, page) {
+        const tabbar = doc.getElementById("tabbar");
+        if (!tabbar) return;
+        const bridge = doc.createElement("button");
+        bridge.type = "button";
+        bridge.hidden = true;
+        bridge.dataset.act = "nav";
+        bridge.dataset.page = page;
+        bridge.setAttribute("aria-label", page === "transactions" ? "Transactions" : page);
+        if (page === "transactions") {
+          bridge.className = "dw-nav-transaction";
+          bridge.textContent = "Transactions";
+        }
+        tabbar.appendChild(bridge);
+        bridge.click();
+        bridge.remove();
+        setActive(doc, page);
+      }
+
+      function installDesktopNavigation() {
+        const doc = frame?.contentDocument;
+        if (!doc?.body || doc.getElementById("dw-desktop-nav")) return;
+
+        const style = doc.createElement("style");
+        style.id = "dw-desktop-nav-style-v2";
+        style.textContent = `
+          #dw-desktop-nav{display:none}
+          @media(min-width:900px){
+            body{--dw-desktop-nav-width:286px;padding-left:var(--dw-desktop-nav-width)!important;transition:padding-left .22s ease!important}
+            body.dw-desktop-nav-collapsed{--dw-desktop-nav-width:104px}
+            #dw-desktop-nav{box-sizing:border-box;position:fixed;z-index:1200;inset:0 auto 0 0;display:flex;flex-direction:column;width:var(--dw-desktop-nav-width);padding:28px 20px 24px;background:linear-gradient(180deg,#073f5b,#075b78);color:#fff;box-shadow:8px 0 28px rgba(1,39,57,.12);transition:width .22s ease,padding .22s ease}
+            #dw-desktop-nav .dw-desktop-head{display:flex;align-items:center;justify-content:space-between;gap:12px;min-height:48px;margin-bottom:26px}
+            #dw-desktop-nav .dw-desktop-brand{overflow:hidden;white-space:nowrap;font-size:1.55rem;font-weight:950;letter-spacing:-.04em}
+            #dw-desktop-nav .dw-desktop-toggle{flex:0 0 44px;width:44px;height:44px;display:grid;place-items:center;border:0;border-radius:12px;background:rgba(255,255,255,.1);color:#fff;font:inherit;font-size:1.4rem;font-weight:900;cursor:pointer}
+            #dw-desktop-nav .dw-desktop-list{display:grid;gap:10px}
+            #dw-desktop-nav .dw-desktop-item{box-sizing:border-box;width:100%;min-height:60px;display:grid;grid-template-columns:42px minmax(0,1fr);align-items:center;gap:12px;border:0;border-radius:14px;background:transparent;color:#fff;padding:9px 14px;text-align:left;font:inherit;font-size:1rem;font-weight:850;cursor:pointer}
+            #dw-desktop-nav .dw-desktop-item:hover{background:rgba(255,255,255,.09)}
+            #dw-desktop-nav .dw-desktop-item.active{background:linear-gradient(135deg,#0987b1,#08799f);box-shadow:0 8px 20px rgba(0,28,43,.2)}
+            #dw-desktop-nav .dw-desktop-icon{display:grid;place-items:center;width:34px;height:34px;font-size:1.5rem;line-height:1}
+            #dw-desktop-nav .dw-desktop-label{min-width:0;overflow:hidden;white-space:nowrap;text-overflow:ellipsis}
+            body.dw-desktop-nav-collapsed #dw-desktop-nav{padding-left:14px;padding-right:14px}
+            body.dw-desktop-nav-collapsed #dw-desktop-nav .dw-desktop-head{justify-content:center}
+            body.dw-desktop-nav-collapsed #dw-desktop-nav .dw-desktop-brand{display:none}
+            body.dw-desktop-nav-collapsed #dw-desktop-nav .dw-desktop-toggle{transform:rotate(180deg)}
+            body.dw-desktop-nav-collapsed #dw-desktop-nav .dw-desktop-item{grid-template-columns:1fr;justify-items:center;padding:9px}
+            body.dw-desktop-nav-collapsed #dw-desktop-nav .dw-desktop-label{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
+            #tabbar{display:none!important}
+            #screen{padding-bottom:32px!important}
+          }
+        `;
+        doc.head.appendChild(style);
+
+        const sidebar = doc.createElement("aside");
+        sidebar.id = "dw-desktop-nav";
+        sidebar.setAttribute("aria-label", "Desktop navigation");
+        sidebar.innerHTML = `
+          <div class="dw-desktop-head">
+            <span class="dw-desktop-brand">DebtWizard</span>
+            <button type="button" class="dw-desktop-toggle" aria-label="Collapse navigation" aria-expanded="true">‹</button>
+          </div>
+          <nav class="dw-desktop-list">
+            ${items.map(([page,label,icon]) => `<button type="button" class="dw-desktop-item" data-dw-desktop-page="${page}" aria-label="${label}"><span class="dw-desktop-icon" aria-hidden="true">${icon}</span><span class="dw-desktop-label">${label}</span></button>`).join("")}
+          </nav>`;
+        doc.body.prepend(sidebar);
+
+        const collapsed = savedCollapsed();
+        doc.body.classList.toggle("dw-desktop-nav-collapsed", collapsed);
+        const toggle = sidebar.querySelector(".dw-desktop-toggle");
+        toggle.setAttribute("aria-expanded", collapsed ? "false" : "true");
+        toggle.setAttribute("aria-label", collapsed ? "Expand navigation" : "Collapse navigation");
+
+        sidebar.addEventListener("click", event => {
+          const toggleButton = event.target.closest(".dw-desktop-toggle");
+          if (toggleButton) {
+            const next = !doc.body.classList.contains("dw-desktop-nav-collapsed");
+            doc.body.classList.toggle("dw-desktop-nav-collapsed", next);
+            toggleButton.setAttribute("aria-expanded", next ? "false" : "true");
+            toggleButton.setAttribute("aria-label", next ? "Expand navigation" : "Collapse navigation");
+            saveCollapsed(next);
+            return;
+          }
+          const pageButton = event.target.closest("[data-dw-desktop-page]");
+          if (pageButton) routeThroughExistingNavigation(doc, pageButton.dataset.dwDesktopPage);
+        });
+
+        doc.addEventListener("click", event => {
+          const page = event.target.closest?.("[data-page]")?.dataset.page || event.target.closest?.("[data-dw-more-page]")?.dataset.dwMorePage;
+          if (page) setActive(doc, page);
+        }, true);
+
+        const initialPage = doc.querySelector("#tabbar .active[data-page]")?.dataset.page || "home";
+        setActive(doc, initialPage);
+      }
+
+      frame?.addEventListener("load", installDesktopNavigation, { once:true });
+      if (frame?.contentDocument?.readyState === "complete") installDesktopNavigation();
     })();
   </script>
 </body>
