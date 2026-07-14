@@ -11,169 +11,36 @@
   <style>html,body{width:100%;height:100%;margin:0;overflow:hidden;background:#eef3f5}#app-host{display:block;width:100%;height:100%;border:0;background:#eef3f5}</style>
 </head>
 <body>
-  <iframe id="app-host" title="DebtWizard" src="mobile.html?v=83" allow="clipboard-read; clipboard-write"></iframe>
-  <script src="transaction-core-v76.js?v=8"></script>
-  <script src="transaction-list-v76.js?v=8"></script>
-  <script src="transaction-alloc-v76.js?v=8"></script>
-  <script src="transaction-edit-v76.js?v=8"></script>
-  <script src="transaction-boot-v76.js?v=8"></script>
+  <iframe id="app-host" title="DebtWizard" src="mobile.html?v=84" allow="clipboard-read; clipboard-write"></iframe>
+  <script src="transaction-core-v76.js?v=9"></script>
+  <script src="transaction-list-v76.js?v=9"></script>
+  <script src="transaction-alloc-v76.js?v=9"></script>
+  <script src="transaction-edit-v76.js?v=9"></script>
+  <script src="transaction-boot-v76.js?v=9"></script>
   <script>
     (() => {
       "use strict";
       const T = window.DWTx76;
-      if (!T?.host) return;
+      if (!T) return;
 
-      const ROUTE = "transactions";
-      const CONTROL_SELECTOR = '[data-txe-route="transactions"]';
-      const NAV_CONTROL_SELECTOR = "button,[role='button'],a";
-
-      const install = () => {
-        const doc = T.host.contentDocument;
-        const win = doc?.defaultView;
-        if (!doc?.body || !win || win.__transactionsControlV83) return;
-        win.__transactionsControlV83 = true;
-
-        const isTransactionControl = control => {
-          if (!control?.matches?.(NAV_CONTROL_SELECTOR)) return false;
-          if (!control.closest("#dw-primary-nav,#tabbar")) return false;
-          if (control.matches(CONTROL_SELECTOR)) return true;
-          const page = String(control.dataset.page || "").trim().toLowerCase();
-          const label = `${control.getAttribute("aria-label") || ""} ${control.textContent || ""}`
-            .replace(/\s+/g, " ")
-            .trim()
-            .toLowerCase();
-          return control.matches(".dw-nav-transaction,[data-edp-trans-add],[data-edp-trans-nav],[data-dw-transaction-route]")
-            || page === "transaction"
-            || page === ROUTE
-            || /(^|\s)(add\s+)?transactions?(\s|$)/.test(label);
-        };
-
-        const transactionControl = target => {
-          const control = target?.closest?.(NAV_CONTROL_SELECTOR);
-          return isTransactionControl(control) ? control : null;
-        };
-
-        const activate = (event, button) => {
-          event?.preventDefault();
-          event?.stopPropagation();
-          event?.stopImmediatePropagation();
-          try {
-            win.localStorage.setItem(T.PAGE_KEY, ROUTE);
-            win.sessionStorage.setItem(T.PAGE_KEY, ROUTE);
-          } catch {}
-          T.renderTransactions?.(doc, button || T.findTransactionButton(doc));
-        };
-
-        let lastPointerActivation = 0;
-        win.addEventListener("pointerup", event => {
-          const button = transactionControl(event.target);
-          if (!button) return;
-          lastPointerActivation = Date.now();
-          activate(event, button);
-        }, true);
-
-        win.addEventListener("click", event => {
-          const button = transactionControl(event.target);
-          if (!button) return;
-          if (Date.now() - lastPointerActivation <= 700) {
-            event.preventDefault();
-            event.stopPropagation();
-            event.stopImmediatePropagation();
-            return;
-          }
-          activate(event, button);
-        }, true);
-
-        win.addEventListener("keydown", event => {
-          if (event.key !== "Enter" && event.key !== " ") return;
-          const button = transactionControl(event.target);
-          if (button) activate(event, button);
-        }, true);
-
-        const createControl = () => {
-          const button = doc.createElement("button");
-          button.type = "button";
-          button.className = "txe-nav-transaction";
-          button.dataset.txeRoute = ROUTE;
-          button.setAttribute("aria-label", "Transactions");
-          button.innerHTML = '<span class="tab-icon" aria-hidden="true">+</span><span>Transactions</span>';
-          return button;
-        };
-
-        const normalizeNav = nav => {
-          let current = nav.querySelector(CONTROL_SELECTOR);
-          const legacy = [...nav.querySelectorAll(NAV_CONTROL_SELECTOR)]
-            .filter(control => control !== current && isTransactionControl(control));
-
-          if (!current) {
-            current = createControl();
-            const position = legacy[0];
-            const budget = nav.querySelector('[data-dw-page="budget"],[data-page="budget"]');
-            if (position) position.replaceWith(current);
-            else if (budget) nav.insertBefore(current, budget);
-            else nav.appendChild(current);
-          }
-
-          legacy.forEach(control => {
-            if (control.isConnected && control !== current) control.remove();
+      // transaction-boot-v76.js is the only Transactions route owner.
+      // It uses one delegated document listener, so navigation rebuilds do not
+      // remove the connection between the button and the Transactions page.
+      T.markActive = doc => {
+        doc.querySelectorAll("#dw-primary-nav,#tabbar").forEach(nav => {
+          const controls = [...nav.querySelectorAll("button,[role='button'],a")];
+          controls.forEach(control => {
+            control.classList.remove("active");
+            control.removeAttribute("aria-current");
+            if (control.hasAttribute("aria-selected")) control.setAttribute("aria-selected", "false");
           });
-        };
-
-        const normalize = () => {
-          doc.querySelectorAll("#dw-primary-nav,#tabbar").forEach(normalizeNav);
-        };
-
-        const style = doc.createElement("style");
-        style.id = "txe-navigation-control-v83";
-        style.textContent = `
-          #dw-primary-nav .txe-nav-transaction,#tabbar>.txe-nav-transaction{
-            appearance:none;border:0;background:transparent;min-width:0;color:#8d989e;
-            display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;
-            padding:4px 2px;font:inherit;font-size:.72rem;font-weight:800;text-align:center
-          }
-          #dw-primary-nav .txe-nav-transaction .tab-icon,#tabbar>.txe-nav-transaction .tab-icon{
-            display:grid;place-items:center;width:58px;height:58px;margin-top:-27px;border-radius:50%;
-            background:#004b75;color:#fff;font-size:2.25rem;font-weight:400;line-height:1;
-            box-shadow:0 8px 20px rgba(0,35,62,.27)
-          }
-          #dw-primary-nav .txe-nav-transaction span:last-child,#tabbar>.txe-nav-transaction span:last-child{color:#007f96}
-          #dw-primary-nav .txe-nav-transaction.active span:last-child,#tabbar>.txe-nav-transaction.active span:last-child{color:#20bfd7}
-        `;
-        doc.querySelectorAll('[id^="txe-navigation-control-v"]').forEach(node => node.remove());
-        doc.head.appendChild(style);
-
-        T.transactionButton = () => null;
-        T.findTransactionButton = targetDoc => targetDoc.querySelector(`#dw-primary-nav ${CONTROL_SELECTOR}`)
-          || targetDoc.querySelector(`#tabbar ${CONTROL_SELECTOR}`)
-          || null;
-        T.markActive = targetDoc => {
-          targetDoc.querySelectorAll("#dw-primary-nav,#tabbar").forEach(nav => {
-            nav.querySelectorAll(NAV_CONTROL_SELECTOR).forEach(control => {
-              control.classList.remove("active");
-              control.removeAttribute("aria-current");
-              if (control.hasAttribute("aria-selected")) control.setAttribute("aria-selected", "false");
-            });
-            const transaction = nav.querySelector(CONTROL_SELECTOR);
-            if (!transaction) return;
-            transaction.classList.add("active");
-            transaction.setAttribute("aria-current", "page");
-            if (transaction.hasAttribute("aria-selected")) transaction.setAttribute("aria-selected", "true");
+          controls.filter(control => T.transactionButton(control)).forEach(control => {
+            control.classList.add("active");
+            control.setAttribute("aria-current", "page");
+            if (control.hasAttribute("aria-selected")) control.setAttribute("aria-selected", "true");
           });
-        };
-
-        new MutationObserver(normalize).observe(doc.body, { childList:true, subtree:true });
-        normalize();
-
-        [120, 400, 900].forEach(delay => win.setTimeout(() => {
-          let activePage = "";
-          try { activePage = win.sessionStorage.getItem(T.PAGE_KEY) || win.localStorage.getItem(T.PAGE_KEY) || ""; } catch {}
-          const button = T.findTransactionButton(doc);
-          if (activePage === ROUTE && button && !doc.querySelector(".txe-page,.txe-deleted-page")) T.renderTransactions?.(doc, button);
-        }, delay));
+        });
       };
-
-      T.host.addEventListener("load", install);
-      install();
     })();
   </script>
 </body>
