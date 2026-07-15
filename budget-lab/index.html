@@ -1,0 +1,113 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#0f6a58">
+  <title>DebtWizard Budget Lab</title>
+  <style>
+    :root{--ink:#19343a;--muted:#74848a;--line:#dce8e7;--bg:#f5f9f8;--panel:#fff;--green:#198c62;--green-dark:#0d6449;--mint:#e7f8f0;--blue:#1089a4;--red:#c94f4f;--yellow:#d39314;--shadow:0 10px 24px rgba(16,63,52,.08)}*{box-sizing:border-box}html,body{margin:0;min-height:100%;background:var(--bg);color:var(--ink);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}button,input{font:inherit}button{cursor:pointer}.shell{min-height:100dvh;padding-bottom:28px}.hero{background:linear-gradient(135deg,#0c6549,#1ca872 70%,#4ac88d);color:#fff;padding:22px 18px 20px}.hero-inner,.wrap{max-width:780px;margin:auto}.hero-top{display:flex;align-items:center;justify-content:space-between;gap:12px}.brand{display:flex;align-items:center;gap:10px;font-weight:900}.brand-mark{display:grid;place-items:center;width:31px;height:31px;border:1px solid rgba(255,255,255,.3);border-radius:10px;background:rgba(255,255,255,.12)}.lab-badge{padding:5px 8px;border-radius:999px;background:#ecffe9;color:#146844;font-size:.66rem;font-weight:900;letter-spacing:.08em}.hero h1{margin:16px 0 5px;font-size:2.2rem;line-height:1;letter-spacing:-.06em}.hero p{margin:0;color:#d9fff0;line-height:1.35}.monthbar{display:grid;grid-template-columns:40px minmax(0,1fr) 40px;gap:9px;align-items:center;margin-top:18px}.monthbar button{height:40px;border:1px solid rgba(255,255,255,.32);border-radius:50%;color:#fff;background:rgba(255,255,255,.1);font-size:1.65rem;line-height:1}.monthbar div{padding:10px;border:1px solid rgba(255,255,255,.27);border-radius:12px;background:rgba(255,255,255,.11);font-weight:850;text-align:center}.wrap{padding:16px}.notice{display:flex;gap:9px;align-items:flex-start;margin:0 0 14px;padding:11px 12px;border:1px solid #c7e7d8;border-radius:13px;color:#2d6b57;background:#effbf5;font-size:.8rem;line-height:1.4}.notice b{display:block;color:#1d5b47}.tabs{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));margin:0 0 14px;overflow:hidden;border:1px solid #c5e5d8;border-radius:13px;background:#e9faf3}.tabs button{min-height:42px;border:0;color:#487266;background:transparent;font-weight:850}.tabs button.active{color:#155a45;background:#fff;box-shadow:0 2px 7px rgba(11,95,66,.13)}.summary{display:grid;grid-template-columns:1.15fr .85fr;gap:10px}.card{border:1px solid var(--line);border-radius:18px;background:var(--panel);box-shadow:var(--shadow)}.summary-primary{padding:15px;color:#fff;background:linear-gradient(135deg,#0d7555,#23ae76)}.summary-primary span,.summary-mini span{display:block;font-size:.75rem}.summary-primary b{display:block;margin:6px 0 4px;font-size:1.65rem;letter-spacing:-.05em}.summary-primary small{color:#d8fff0}.mini-grid{display:grid;gap:10px}.summary-mini{padding:11px}.summary-mini span{color:var(--muted)}.summary-mini b{display:block;margin-top:5px;font-size:1.04rem}.status{margin:13px 0;padding:12px;border:1px solid #bfe7d4;border-radius:13px;color:#21664c;background:#effbf4;font-weight:850}.status.over{border-color:#f1c5c2;color:#9a3d38;background:#fff2f1}.section{margin-top:18px}.section-head{display:flex;align-items:flex-start;justify-content:space-between;gap:10px;margin-bottom:10px}.section h2{margin:0;color:#155f49;font-size:1.38rem;letter-spacing:-.04em}.section p{margin:5px 0 0;color:var(--muted);font-size:.82rem;line-height:1.35}.button{min-height:41px;padding:0 13px;border:0;border-radius:11px;color:#fff;background:linear-gradient(135deg,#138a65,#2fc48a);font-weight:900;box-shadow:0 7px 15px rgba(24,143,102,.18)}.button.secondary{color:#167458;border:1px solid #bde5d4;background:#effbf5;box-shadow:none}.button.danger{color:#a94440;border:1px solid #efc7c4;background:#fff2f1;box-shadow:none}.group{overflow:hidden}.group-head{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:13px 14px;border-bottom:1px solid #e5efec;background:linear-gradient(90deg,#fbfefd,#f4fbf8)}.group-head b{font-size:1rem}.group-head span{color:var(--muted);font-size:.78rem}.row{display:grid;grid-template-columns:minmax(0,1fr) 96px 34px;gap:9px;align-items:center;padding:12px 14px;border-bottom:1px solid #edf2f1}.row:last-child{border-bottom:0}.row-name{min-width:0;font-weight:820;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.row-sub{display:block;margin-top:3px;color:var(--muted);font-size:.7rem}.amount-input{width:100%;min-height:39px;padding:6px 8px;border:1px solid #d6e5df;border-radius:10px;color:#25474a;background:#fff;font-size:16px;font-weight:850;text-align:right}.row-btn{width:30px;height:30px;border:0;border-radius:9px;color:#819095;background:transparent;font-size:1.1rem}.row-btn:active{color:#b03f3b;background:#fff1f0}.debt-row{grid-template-columns:minmax(0,1fr) auto}.debt-row strong{color:#146d51;white-space:nowrap}.debt-lock{display:inline-block;margin-top:4px;padding:3px 6px;border-radius:7px;color:#3c755e;background:#e9f8f0;font-size:.63rem;font-weight:900}.empty{padding:24px 14px;color:var(--muted);text-align:center}.empty b{display:block;margin-bottom:6px;color:#155f49}.footer-note{margin:14px 0 0;color:#829198;font-size:.73rem;line-height:1.4}.modal-bg{position:fixed;z-index:10;inset:0;display:flex;align-items:flex-end;background:rgba(13,41,35,.55)}.modal{width:min(100%,780px);max-height:88dvh;overflow:auto;padding:20px 18px calc(20px + env(safe-area-inset-bottom,0));border-radius:24px 24px 0 0;background:#fff}.modal-head{display:flex;align-items:center;justify-content:space-between;gap:12px}.modal h2{margin:0;font-size:1.32rem}.close{width:34px;height:34px;border:0;color:#75858a;background:transparent;font-size:2rem;line-height:1}.form{display:grid;gap:12px;margin-top:16px}.field{display:grid;gap:6px;color:#597077;font-size:.81rem;font-weight:850}.field input{min-height:48px;padding:9px 10px;border:1px solid #d5e5df;border-radius:11px;font-size:16px}.form-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}.modal-actions{display:flex;justify-content:flex-end;gap:9px;margin-top:5px}.copy-options{display:grid;gap:9px;margin-top:13px}.copy-option{padding:12px;border:1px solid #d7e8e1;border-radius:12px;color:#466268;background:#f8fdfb;font-size:.85rem}.copy-option b{color:#1d604b}.top-action{border:1px solid rgba(255,255,255,.35);border-radius:10px;padding:8px 10px;color:#fff;background:rgba(255,255,255,.1);font-size:.76rem;font-weight:850}@media(max-width:440px){.wrap{padding:14px}.summary{grid-template-columns:1fr}.mini-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.row{grid-template-columns:minmax(0,1fr) 88px 30px}.hero h1{font-size:2rem}.section-head{align-items:center}.section-head p{display:none}}@media(min-width:620px){.modal-bg{align-items:center;justify-content:center;padding:20px}.modal{border-radius:20px}}
+  </style>
+</head>
+<body>
+  <div class="shell">
+    <header class="hero"><div class="hero-inner"><div class="hero-top"><div class="brand"><span class="brand-mark">$</span> DebtWizard <span class="lab-badge">BUDGET LAB</span></div><button class="top-action" data-act="copy-month">Copy prior month</button></div><h1>Monthly budget</h1><p>Give every dollar a job, while keeping your debt payoff plan visible.</p><div class="monthbar"><button data-act="prev-month" aria-label="Previous month">‹</button><div id="month-label"></div><button data-act="next-month" aria-label="Next month">›</button></div></div></header>
+    <main class="wrap" id="app"></main>
+  </div>
+  <div id="modal-root"></div>
+<script>
+(() => {
+  'use strict';
+  const DEBT_KEY='debt-calculator-v2';
+  const BUDGET_KEY='debtwizard-budget-lab-v1';
+  const money=new Intl.NumberFormat('en-US',{style:'currency',currency:'USD'});
+  const num=v=>Number.isFinite(parseFloat(v))?parseFloat(v):0;
+  const cents=v=>Math.round((num(v)+Number.EPSILON)*100)/100;
+  const uid=p=>`${p}-${Date.now()}-${Math.random().toString(36).slice(2,7)}`;
+  const esc=v=>String(v??'').replace(/[&<>'"]/g,x=>({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[x]));
+  const safeRead=(key,fallback)=>{try{return JSON.parse(localStorage.getItem(key))||fallback}catch{return fallback}};
+  const keyFromDate=d=>`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`;
+  const labelFromKey=k=>new Date(`${k}-01T12:00:00`).toLocaleDateString('en-US',{month:'long',year:'numeric'});
+  const monthFromKey=k=>{const [y,m]=k.split('-').map(Number);return new Date(y,m-1,1)};
+  let selectedMonth=keyFromDate(new Date());
+  let view='planned';
+
+  function defaultGroups(){
+    const rows=(name,items)=>({id:uid('group'),name,items:items.map(item=>({id:uid('item'),name:item,planned:0,spent:0}))});
+    return [
+      rows('Giving & Saving',['Giving','Emergency Fund','Other Savings']),
+      rows('Housing & Utilities',['Rent / Mortgage','Electric','Water','Internet / Phone']),
+      rows('Food & Transportation',['Groceries','Dining Out','Fuel','Auto Maintenance']),
+      rows('Lifestyle & Personal',['Insurance','Medical','Personal','Subscriptions','Miscellaneous'])
+    ];
+  }
+
+  function getLab(){
+    const lab=safeRead(BUDGET_KEY,{version:1,months:{}});
+    lab.months=lab.months&&typeof lab.months==='object'?lab.months:{};
+    if(!lab.months[selectedMonth]) lab.months[selectedMonth]={income:[],groups:defaultGroups(),extraDebt:0};
+    return lab;
+  }
+  function getMonth(){const lab=getLab();return lab.months[selectedMonth]}
+  function saveLab(lab){localStorage.setItem(BUDGET_KEY,JSON.stringify(lab))}
+  function mutateMonth(fn){const lab=getLab();fn(lab.months[selectedMonth]);saveLab(lab)}
+  function debts(){const raw=safeRead(DEBT_KEY,{debts:[]});return Array.isArray(raw.debts)?raw.debts.filter(d=>num(d.balance)>0.004):[]}
+  function debtMinimums(){return cents(debts().reduce((sum,d)=>sum+Math.max(0,num(d.minimum)),0))}
+  function debtRows(){return debts().sort((a,b)=>num(a.dueDay)-num(b.dueDay))}
+  function totals(){
+    const m=getMonth();
+    const income=cents(m.income.reduce((s,x)=>s+num(x.amount),0));
+    const catPlan=cents(m.groups.reduce((s,g)=>s+g.items.reduce((a,x)=>a+num(x.planned),0),0));
+    const catSpent=cents(m.groups.reduce((s,g)=>s+g.items.reduce((a,x)=>a+num(x.spent),0),0));
+    const debtPay=cents(debtMinimums()+num(m.extraDebt));
+    return {income,catPlan,catSpent,debtPay,planned:cents(catPlan+debtPay),spent:catSpent,remaining:cents(income-catSpent),left:cents(income-catPlan-debtPay)};
+  }
+  function displayedAmount(item){return view==='planned'?num(item.planned):view==='spent'?num(item.spent):Math.max(0,num(item.planned)-num(item.spent))}
+  function primary(){const t=totals();if(view==='planned')return {label:'Planned outflow',value:t.planned,sub:`Planned income ${money.format(t.income)}`,smallLabel:'Left to budget',small:t.left};if(view==='spent')return {label:'Spent so far',value:t.spent,sub:`Income received is tracked separately`,smallLabel:'Income remaining',small:t.remaining};return {label:'Remaining to spend',value:Math.max(0,t.income-t.spent),sub:`Based on planned income`,smallLabel:'Budget remaining',small:Math.max(0,t.planned-t.spent)}}
+
+  function incomeMarkup(m){if(!m.income.length)return '<div class="empty"><b>No income entered</b>Add your expected paychecks or other monthly income.</div>';return m.income.map(x=>`<div class="row"><span><span class="row-name">${esc(x.name)}</span><span class="row-sub">Expected income</span></span><input class="amount-input" inputmode="decimal" data-income="${x.id}" value="${num(x.amount)||''}" placeholder="0.00"><button class="row-btn" data-delete-income="${x.id}" aria-label="Remove ${esc(x.name)}">×</button></div>`).join('')}
+  function groupMarkup(g){return `<section class="card group"><div class="group-head"><b>${esc(g.name)}</b><span>${view==='planned'?'Planned':view==='spent'?'Spent':'Remaining'}</span></div>${g.items.map(item=>`<div class="row"><span><span class="row-name">${esc(item.name)}</span><span class="row-sub">${view==='planned'?'Assign a planned amount':view==='spent'?'Record spending':'Planned less spent'}</span></span><input class="amount-input" inputmode="decimal" data-item="${item.id}" data-mode="${view}" value="${displayedAmount(item)||''}" placeholder="0.00"><button class="row-btn" data-delete-item="${item.id}" data-group="${g.id}" aria-label="Remove ${esc(item.name)}">×</button></div>`).join('')}</section>`}
+  function debtMarkup(m){const rows=debtRows();return `<section class="card group"><div class="group-head"><b>Debt payments</b><span>Synced read-only</span></div>${rows.length?rows.map(d=>`<div class="row debt-row"><span><span class="row-name">${esc(d.name||d.nickname||'Debt')}</span><span class="row-sub">Due day ${Math.max(1,Math.min(31,Math.floor(num(d.dueDay)||1))} <span class="debt-lock">LOCKED FROM DEBTWIZARD</span></span></span><strong>${money.format(num(d.minimum))}</strong></div>`).join(''):'<div class="empty"><b>No active debts found</b>Add debts in the main DebtWizard app to show their minimums here.</div>'}<div class="row"><span><span class="row-name">Extra debt payoff</span><span class="row-sub">Optional amount above all required minimums</span></span><input class="amount-input" inputmode="decimal" data-extra-debt value="${num(m.extraDebt)||''}" placeholder="0.00"><span></span></div></section>`}
+  function render(){
+    const app=document.getElementById('app');const m=getMonth(),t=totals(),p=primary();
+    document.getElementById('month-label').textContent=labelFromKey(selectedMonth);
+    app.innerHTML=`<div class="notice"><span>✓</span><div><b>Protected Budget Lab</b>This page stores data separately from DebtWizard. It reads your debt minimums but does not change balances, APRs, payoff settings, or the live app.</div></div><div class="tabs"><button data-view="planned" class="${view==='planned'?'active':''}">Planned</button><button data-view="spent" class="${view==='spent'?'active':''}">Spent</button><button data-view="remaining" class="${view==='remaining'?'active':''}">Remaining</button></div><section class="summary"><div class="card summary-primary"><span>${p.label}</span><b>${money.format(p.value)}</b><small>${p.sub}</small></div><div class="mini-grid"><div class="card summary-mini"><span>Required debt minimums</span><b>${money.format(debtMinimums())}</b></div><div class="card summary-mini"><span>${p.smallLabel}</span><b>${money.format(p.small)}</b></div></div></section><div class="status ${t.left<0?'over':''}">${t.left>=0?`${money.format(t.left)} left to budget`: `${money.format(-t.left)} over budget — reduce planned spending or add income.`}</div><section class="section"><div class="section-head"><div><h2>Income</h2><p>Enter all income you expect in ${labelFromKey(selectedMonth)}.</p></div><button class="button secondary" data-act="add-income">+ Income</button></div><div class="card group">${incomeMarkup(m)}</div></section><section class="section"><div class="section-head"><div><h2>Monthly plan</h2><p>Plan each category, then track what you actually spend.</p></div><button class="button secondary" data-act="add-category">+ Item</button></div>${m.groups.map(groupMarkup).join('')}</section><section class="section"><div class="section-head"><div><h2>Debt payoff</h2><p>Minimums come from DebtWizard automatically. Add optional extra payoff here.</p></div></div>${debtMarkup(m)}</section><p class="footer-note">Budget Lab is an isolated test workspace. It uses <code>debtwizard-budget-lab-v1</code> in this browser and only reads the main app’s <code>debt-calculator-v2</code> debt data.</p>`;
+  }
+
+  function modal(title,html){document.getElementById('modal-root').innerHTML=`<div class="modal-bg"><section class="modal"><div class="modal-head"><h2>${esc(title)}</h2><button class="close" data-act="close">×</button></div>${html}</section></div>`}
+  function addIncome(){modal('Add income',`<form class="form" id="income-form"><label class="field">Income name<input name="name" required placeholder="Example: Paycheck"></label><label class="field">Amount expected<input name="amount" required type="number" inputmode="decimal" step=".01" placeholder="0.00"></label><div class="modal-actions"><button class="button secondary" type="button" data-act="close">Cancel</button><button class="button" type="submit">Add income</button></div></form>`)}
+  function addCategory(){modal('Add budget item',`<form class="form" id="category-form"><label class="field">Budget item<input name="name" required placeholder="Example: Pet care"></label><label class="field">Budget group<input name="group" list="budget-groups" required placeholder="Choose or type a group"><datalist id="budget-groups">${getMonth().groups.map(g=>`<option value="${esc(g.name)}">`).join('')}</datalist></label><label class="field">Planned amount<input name="amount" required type="number" inputmode="decimal" step=".01" placeholder="0.00"></label><div class="modal-actions"><button class="button secondary" type="button" data-act="close">Cancel</button><button class="button" type="submit">Add item</button></div></form>`)}
+  function copyMonth(){const previous=monthFromKey(selectedMonth);previous.setMonth(previous.getMonth()-1);const prevKey=keyFromDate(previous),lab=getLab(),source=lab.months[prevKey];modal('Copy prior month',`<div class="copy-options"><div class="copy-option">${source?`Copy the income, categories, planned amounts, and extra debt payoff from <b>${labelFromKey(prevKey)}</b>. Spent amounts will reset to $0.00.`:`There is no saved budget for <b>${labelFromKey(prevKey)}</b> yet.`}</div>${source?'<button class="button" data-act="confirm-copy">Copy '+esc(labelFromKey(prevKey))+' budget</button>':''}<button class="button secondary" data-act="close">Cancel</button></div>`)}
+  function shiftMonth(delta){const d=monthFromKey(selectedMonth);d.setMonth(d.getMonth()+delta);selectedMonth=keyFromDate(d);render()}
+
+  document.addEventListener('click',e=>{
+    const b=e.target.closest('button');if(!b)return;
+    if(b.dataset.view){view=b.dataset.view;render();return}
+    const act=b.dataset.act;if(!act)return;
+    if(act==='prev-month')shiftMonth(-1);
+    if(act==='next-month')shiftMonth(1);
+    if(act==='add-income')addIncome();
+    if(act==='add-category')addCategory();
+    if(act==='copy-month')copyMonth();
+    if(act==='close')document.getElementById('modal-root').innerHTML='';
+    if(act==='confirm-copy'){const d=monthFromKey(selectedMonth);d.setMonth(d.getMonth()-1);const source=getLab().months[keyFromDate(d)];if(source)mutateMonth(m=>{m.income=source.income.map(x=>({...x,id:uid('income')}));m.groups=source.groups.map(g=>({...g,id:uid('group'),items:g.items.map(x=>({...x,id:uid('item'),spent:0}))}));m.extraDebt=num(source.extraDebt)});document.getElementById('modal-root').innerHTML='';render()}
+    if(b.dataset.deleteIncome){mutateMonth(m=>m.income=m.income.filter(x=>x.id!==b.dataset.deleteIncome));render()}
+    if(b.dataset.deleteItem){mutateMonth(m=>{const g=m.groups.find(x=>x.id===b.dataset.group);if(g)g.items=g.items.filter(x=>x.id!==b.dataset.deleteItem)});render()}
+  });
+
+  document.addEventListener('submit',e=>{
+    if(e.target.id==='income-form'){e.preventDefault();const f=Object.fromEntries(new FormData(e.target).entries());mutateMonth(m=>m.income.push({id:uid('income'),name:f.name.trim(),amount:cents(f.amount)}));document.getElementById('modal-root').innerHTML='';render()}
+    if(e.target.id==='category-form'){e.preventDefault();const f=Object.fromEntries(new FormData(e.target).entries());mutateMonth(m=>{let g=m.groups.find(x=>x.name.toLowerCase()===f.group.trim().toLowerCase());if(!g){g={id:uid('group'),name:f.group.trim(),items:[]};m.groups.push(g)}g.items.push({id:uid('item'),name:f.name.trim(),planned:cents(f.amount),spent:0})});document.getElementById('modal-root').innerHTML='';render()}
+  });
+
+  document.addEventListener('change',e=>{
+    if(e.target.dataset.income){mutateMonth(m=>{const x=m.income.find(x=>x.id===e.target.dataset.income);if(x)x.amount=cents(e.target.value)});render()}
+    if(e.target.dataset.item){mutateMonth(m=>m.groups.forEach(g=>g.items.forEach(x=>{if(x.id===e.target.dataset.item){if(e.target.dataset.mode==='planned')x.planned=cents(e.target.value);if(e.target.dataset.mode==='spent')x.spent=cents(e.target.value)}})));render()}
+    if(e.target.dataset.extraDebt){mutateMonth(m=>m.extraDebt=cents(e.target.value));render()}
+  });
+
+  render();
+})();
+</script>
+</body>
+</html>
